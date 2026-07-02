@@ -16,6 +16,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         NSApp.setActivationPolicy(.accessory)
         configureStatusItem()
         TouchBarProfileManager.shared.start()
+        touchBarController.start()
 
         if !Settings.shared.hasSeenOnboarding {
             showSettings()
@@ -25,6 +26,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationWillTerminate(_ notification: Notification) {
+        touchBarController.stop()
         TouchBarProfileManager.shared.stop()
     }
 
@@ -46,6 +48,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     @objc private func showSettings() {
         Settings.shared.hasSeenOnboarding = true
+        configureStatusItem()
         onboardingWindowController.showWindow(nil)
         NSApp.activate(ignoringOtherApps: true)
     }

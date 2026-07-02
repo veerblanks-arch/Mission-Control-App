@@ -24,4 +24,5 @@ struct PermissionsManager {
             configuration: NSWorkspace.OpenConfiguration()
         )
     }
+
 }

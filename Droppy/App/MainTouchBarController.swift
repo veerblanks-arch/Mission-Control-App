@@ -5,6 +5,10 @@ final class MainTouchBarController: NSViewController, NSTouchBarDelegate {
         static let touchBarIdentifier = NSTouchBar.CustomizationIdentifier("com.ranveer.droppy.touchbar.main")
     }
 
+    func start() {}
+
+    func stop() {}
+
     override func loadView() {
         view = NSView(frame: NSRect(x: 0, y: 0, width: 420, height: 120))
     }
@@ -14,7 +18,7 @@ final class MainTouchBarController: NSViewController, NSTouchBarDelegate {
         touchBar.delegate = self
         touchBar.customizationIdentifier = Constants.touchBarIdentifier
         touchBar.defaultItemIdentifiers = [
-            .droppyVolumeBrightness,
+            .droppyControlsHeader,
             .droppyMedia,
             .droppyClipboard,
             .droppyShelf,
@@ -30,8 +34,8 @@ final class MainTouchBarController: NSViewController, NSTouchBarDelegate {
 
     func touchBar(_ touchBar: NSTouchBar, makeItemForIdentifier identifier: NSTouchBarItem.Identifier) -> NSTouchBarItem? {
         switch identifier {
-        case .droppyVolumeBrightness:
-            return iconButton(identifier: identifier, symbolName: "sun.max", label: "Display")
+        case .droppyControlsHeader:
+            return controlsHeaderItem(identifier: identifier)
         case .droppyMedia:
             return iconButton(identifier: identifier, symbolName: "music.note", label: "Media")
         case .droppyClipboard:
@@ -49,6 +53,18 @@ final class MainTouchBarController: NSViewController, NSTouchBarDelegate {
         default:
             return nil
         }
+    }
+
+    private func controlsHeaderItem(identifier: NSTouchBarItem.Identifier) -> NSTouchBarItem {
+        let item = NSCustomTouchBarItem(identifier: identifier)
+        let label = NSTextField(labelWithString: "Droppy")
+        label.alignment = .center
+        label.font = .systemFont(ofSize: 12, weight: .bold)
+        label.textColor = .systemTeal
+        label.toolTip = "Droppy controls"
+        item.view = label
+        item.customizationLabel = "Droppy"
+        return item
     }
 
     private func iconButton(
@@ -81,7 +97,7 @@ final class MainTouchBarController: NSViewController, NSTouchBarDelegate {
 }
 
 extension NSTouchBarItem.Identifier {
-    static let droppyVolumeBrightness = NSTouchBarItem.Identifier("com.ranveer.droppy.touchbar.volumeBrightness")
+    static let droppyControlsHeader = NSTouchBarItem.Identifier("com.ranveer.droppy.touchbar.controlsHeader")
     static let droppyMedia = NSTouchBarItem.Identifier("com.ranveer.droppy.touchbar.media")
     static let droppyClipboard = NSTouchBarItem.Identifier("com.ranveer.droppy.touchbar.clipboard")
     static let droppyShelf = NSTouchBarItem.Identifier("com.ranveer.droppy.touchbar.shelf")

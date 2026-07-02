@@ -17,4 +17,5 @@ final class Settings {
         get { defaults.bool(forKey: Keys.hasSeenOnboarding) }
         set { defaults.set(newValue, forKey: Keys.hasSeenOnboarding) }
     }
+
 }
