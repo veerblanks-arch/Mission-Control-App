@@ -15,6 +15,6 @@ Custom volume and brightness controls were scrapped for MVP after hardware testi
 
 Droppy no longer relies on being the focused app to expose its Touch Bar controls. The foundation now registers a persistent Control Strip item, then uses a system modal Touch Bar when that item or the menu-bar command is triggered.
 
-The system tray/modal bridge uses AppKit selectors that are available at runtime on the target macOS build but are not surfaced as normal Swift APIs in the public headers. This is acceptable for the personal-use MVP, but it should be retested before any distribution plan.
+The system tray/modal bridge uses AppKit selectors that are available at runtime on the target macOS build but are not surfaced as normal Swift APIs in the public headers. It also requires `DFRElementSetControlStripPresenceForIdentifier` from the private DFRFoundation framework so the Droppy icon actually appears in the minimized Control Strip. This is acceptable for the personal-use MVP, but it should be retested before any distribution plan.
 
 Phase 1's custom volume and brightness controls remain deferred under this architecture. Native macOS controls are still better for those settings, and Droppy should focus first on controls that benefit from the persistent modal surface.

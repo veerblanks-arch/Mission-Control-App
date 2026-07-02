@@ -1,4 +1,5 @@
 import AppKit
+import Darwin
 
 final class MainTouchBarController: NSViewController, NSTouchBarDelegate {
     private enum Constants {
@@ -6,12 +7,14 @@ final class MainTouchBarController: NSViewController, NSTouchBarDelegate {
         static let modalAutoMinimizeDelay: TimeInterval = 12
     }
 
-    private var systemTrayItem: NSCustomTouchBarItem?
+    private var systemTrayItem: NSTouchBarItem?
     private var activeModalTouchBar: NSTouchBar?
     private var modalAutoMinimizeTimer: Timer?
 
     func start() {
-        registerSystemTrayItem()
+        DispatchQueue.main.async { [weak self] in
+            self?.registerSystemTrayItem()
+        }
     }
 
     func stop() {
@@ -30,6 +33,7 @@ final class MainTouchBarController: NSViewController, NSTouchBarDelegate {
 
     func presentModalTouchBar() {
         guard SystemModalTouchBarBridge.isSupported else {
+            NSLog("Droppy Touch Bar: system modal APIs are not supported on this runtime.")
             NSSound.beep()
             return
         }
@@ -38,8 +42,15 @@ final class MainTouchBarController: NSViewController, NSTouchBarDelegate {
             registerSystemTrayItem()
         }
 
+        guard systemTrayItem != nil else {
+            NSLog("Droppy Touch Bar: cannot present because the Control Strip item did not register.")
+            NSSound.beep()
+            return
+        }
+
         let touchBar = makeModalTouchBar()
         activeModalTouchBar = touchBar
+        NSLog("Droppy Touch Bar: presenting modal bar.")
         SystemModalTouchBarBridge.present(touchBar, systemTrayItemIdentifier: .droppySystemTray)
         scheduleModalAutoMinimize()
     }
@@ -66,11 +77,14 @@ final class MainTouchBarController: NSViewController, NSTouchBarDelegate {
 
     private func registerSystemTrayItem() {
         guard SystemModalTouchBarBridge.isSupported, systemTrayItem == nil else {
+            if !SystemModalTouchBarBridge.isSupported {
+                NSLog("Droppy Touch Bar: cannot register Control Strip item because the bridge is unsupported.")
+            }
             return
         }
 
-        let item = NSCustomTouchBarItem(identifier: .droppySystemTray)
-        let button = NSButton(
+        let item = NSButtonTouchBarItem(
+            identifier: .droppySystemTray,
             image: NSImage(
                 systemSymbolName: "rectangle.and.hand.point.up.left",
                 accessibilityDescription: "Open Droppy Touch Bar"
@@ -78,15 +92,15 @@ final class MainTouchBarController: NSViewController, NSTouchBarDelegate {
             target: self,
             action: #selector(systemTrayItemTapped)
         )
-        button.bezelStyle = .texturedRounded
-        button.toolTip = "Open Droppy"
-        item.view = button
         item.customizationLabel = "Droppy"
 
         guard SystemModalTouchBarBridge.addSystemTrayItem(item) else {
+            NSLog("Droppy Touch Bar: addSystemTrayItem returned false.")
             return
         }
 
+        SystemModalTouchBarBridge.setControlStripPresence(true, for: .droppySystemTray)
+        NSLog("Droppy Touch Bar: registered Control Strip item.")
         systemTrayItem = item
     }
 
@@ -96,6 +110,7 @@ final class MainTouchBarController: NSViewController, NSTouchBarDelegate {
         }
 
         SystemModalTouchBarBridge.removeSystemTrayItem(systemTrayItem)
+        SystemModalTouchBarBridge.setControlStripPresence(false, for: systemTrayItem.identifier)
         self.systemTrayItem = nil
     }
 
@@ -113,11 +128,10 @@ final class MainTouchBarController: NSViewController, NSTouchBarDelegate {
             .droppyTimer,
             .flexibleSpace,
             .droppyProfileStatus,
-            .droppyMinimize,
-            .droppyClose
+            .droppyMinimize
         ]
         touchBar.customizationAllowedItemIdentifiers = touchBar.defaultItemIdentifiers
-        touchBar.escapeKeyReplacementItemIdentifier = .droppyClose
+        touchBar.escapeKeyReplacementItemIdentifier = .droppyMinimize
         return touchBar
     }
 
@@ -141,8 +155,6 @@ final class MainTouchBarController: NSViewController, NSTouchBarDelegate {
             return profileStatusItem(identifier: identifier)
         case .droppyMinimize:
             return actionButton(identifier: identifier, symbolName: "chevron.down", label: "Minimize", action: #selector(minimizeButtonTapped))
-        case .droppyClose:
-            return actionButton(identifier: identifier, symbolName: "xmark", label: "Close", action: #selector(closeButtonTapped))
         default:
             return nil
         }
@@ -165,15 +177,13 @@ final class MainTouchBarController: NSViewController, NSTouchBarDelegate {
         symbolName: String,
         label: String
     ) -> NSTouchBarItem {
-        let item = NSCustomTouchBarItem(identifier: identifier)
-        let button = NSButton(
+        let item = NSButtonTouchBarItem(
+            identifier: identifier,
             image: NSImage(systemSymbolName: symbolName, accessibilityDescription: label) ?? NSImage(),
             target: nil,
             action: nil
         )
-        button.bezelColor = .controlAccentColor
-        button.toolTip = label
-        item.view = button
+        item.bezelColor = .controlAccentColor
         item.customizationLabel = label
         return item
     }
@@ -184,15 +194,12 @@ final class MainTouchBarController: NSViewController, NSTouchBarDelegate {
         label: String,
         action: Selector
     ) -> NSTouchBarItem {
-        let item = NSCustomTouchBarItem(identifier: identifier)
-        let button = NSButton(
+        let item = NSButtonTouchBarItem(
+            identifier: identifier,
             image: NSImage(systemSymbolName: symbolName, accessibilityDescription: label) ?? NSImage(),
             target: self,
             action: action
         )
-        button.bezelStyle = .texturedRounded
-        button.toolTip = label
-        item.view = button
         item.customizationLabel = label
         return item
     }
@@ -233,10 +240,6 @@ final class MainTouchBarController: NSViewController, NSTouchBarDelegate {
     @objc private func minimizeButtonTapped() {
         minimizeModalTouchBar()
     }
-
-    @objc private func closeButtonTapped() {
-        dismissModalTouchBar()
-    }
 }
 
 extension NSTouchBarItem.Identifier {
@@ -250,20 +253,25 @@ extension NSTouchBarItem.Identifier {
     static let droppyTimer = NSTouchBarItem.Identifier("com.ranveer.droppy.touchbar.timer")
     static let droppyProfileStatus = NSTouchBarItem.Identifier("com.ranveer.droppy.touchbar.profileStatus")
     static let droppyMinimize = NSTouchBarItem.Identifier("com.ranveer.droppy.touchbar.minimize")
-    static let droppyClose = NSTouchBarItem.Identifier("com.ranveer.droppy.touchbar.close")
 }
 
 private enum SystemModalTouchBarBridge {
     private static let addSystemTrayItemSelector = Selector(("addSystemTrayItem:"))
     private static let removeSystemTrayItemSelector = Selector(("removeSystemTrayItem:"))
+    private static let presentWithPlacementSelector = Selector(("presentSystemModalTouchBar:placement:systemTrayItemIdentifier:"))
     private static let presentSelector = Selector(("presentSystemModalTouchBar:systemTrayItemIdentifier:"))
     private static let dismissSelector = Selector(("dismissSystemModalTouchBar:"))
     private static let minimizeSelector = Selector(("minimizeSystemModalTouchBar:"))
+    private static let expandedControlStripPlacement = 1
+    private static let dfrFrameworkPath = "/System/Library/PrivateFrameworks/DFRFoundation.framework/DFRFoundation"
+    private static let dfrSetPresenceSymbol = "DFRElementSetControlStripPresenceForIdentifier"
+
+    private typealias SetControlStripPresenceFunction = @convention(c) (NSString, Bool) -> Void
 
     static var isSupported: Bool {
         NSTouchBarItem.responds(to: addSystemTrayItemSelector)
             && NSTouchBarItem.responds(to: removeSystemTrayItemSelector)
-            && NSTouchBar.responds(to: presentSelector)
+            && (NSTouchBar.responds(to: presentWithPlacementSelector) || NSTouchBar.responds(to: presentSelector))
             && NSTouchBar.responds(to: dismissSelector)
             && NSTouchBar.responds(to: minimizeSelector)
     }
@@ -285,12 +293,62 @@ private enum SystemModalTouchBarBridge {
         _ = NSTouchBarItem.perform(removeSystemTrayItemSelector, with: item)
     }
 
+    static func setControlStripPresence(_ isPresent: Bool, for identifier: NSTouchBarItem.Identifier) {
+        guard
+            let handle = dlopen(dfrFrameworkPath, RTLD_NOW),
+            let symbol = dlsym(handle, dfrSetPresenceSymbol)
+        else {
+            let error = dlerror().map { String(cString: $0) } ?? "unknown error"
+            NSLog("Droppy Touch Bar: could not load DFRFoundation presence setter: \(error)")
+            return
+        }
+
+        defer {
+            dlclose(handle)
+        }
+
+        let setPresence = unsafeBitCast(symbol, to: SetControlStripPresenceFunction.self)
+        setPresence(identifier.rawValue as NSString, isPresent)
+        NSLog("Droppy Touch Bar: set Control Strip presence for \(identifier.rawValue) to \(isPresent).")
+    }
+
     static func present(_ touchBar: NSTouchBar, systemTrayItemIdentifier: NSTouchBarItem.Identifier) {
+        if presentWithPlacement(touchBar, systemTrayItemIdentifier: systemTrayItemIdentifier) {
+            return
+        }
+
         guard NSTouchBar.responds(to: presentSelector) else {
             return
         }
 
         _ = NSTouchBar.perform(presentSelector, with: touchBar, with: systemTrayItemIdentifier.rawValue)
+    }
+
+    private static func presentWithPlacement(_ touchBar: NSTouchBar, systemTrayItemIdentifier: NSTouchBarItem.Identifier) -> Bool {
+        guard
+            NSTouchBar.responds(to: presentWithPlacementSelector),
+            let method = class_getClassMethod(NSTouchBar.self, presentWithPlacementSelector)
+        else {
+            return false
+        }
+
+        let implementation = method_getImplementation(method)
+        typealias PresentFunction = @convention(c) (
+            AnyClass,
+            Selector,
+            NSTouchBar,
+            Int,
+            NSString
+        ) -> Void
+        let present = unsafeBitCast(implementation, to: PresentFunction.self)
+        present(
+            NSTouchBar.self,
+            presentWithPlacementSelector,
+            touchBar,
+            expandedControlStripPlacement,
+            systemTrayItemIdentifier.rawValue as NSString
+        )
+        return true
     }
 
     static func dismiss(_ touchBar: NSTouchBar) {
