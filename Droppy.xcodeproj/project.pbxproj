@@ -1,0 +1,553 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 56;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		100000000000000000000001 /* TouchBarApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000001 /* TouchBarApp.swift */; };
+		100000000000000000000002 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000002 /* AppDelegate.swift */; };
+		100000000000000000000003 /* MainTouchBarController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000003 /* MainTouchBarController.swift */; };
+		100000000000000000000004 /* OnboardingWindowController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000004 /* OnboardingWindowController.swift */; };
+		100000000000000000000005 /* TouchBarHostWindowController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000005 /* TouchBarHostWindowController.swift */; };
+		100000000000000000000006 /* PermissionsManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000006 /* PermissionsManager.swift */; };
+		100000000000000000000007 /* TouchBarProfileManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000007 /* TouchBarProfileManager.swift */; };
+		100000000000000000000008 /* Settings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000008 /* Settings.swift */; };
+		100000000000000000000009 /* VolumeBrightnessFeature.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000009 /* VolumeBrightnessFeature.swift */; };
+		10000000000000000000000A /* MediaPlayerFeature.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20000000000000000000000A /* MediaPlayerFeature.swift */; };
+		10000000000000000000000B /* ClipboardStripFeature.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20000000000000000000000B /* ClipboardStripFeature.swift */; };
+		10000000000000000000000C /* FileShelfFeature.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20000000000000000000000C /* FileShelfFeature.swift */; };
+		10000000000000000000000D /* AppSwitcherProfilesFeature.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20000000000000000000000D /* AppSwitcherProfilesFeature.swift */; };
+		10000000000000000000000E /* SystemStatsFeature.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20000000000000000000000E /* SystemStatsFeature.swift */; };
+		10000000000000000000000F /* StudyTimerFeature.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20000000000000000000000F /* StudyTimerFeature.swift */; };
+		100000000000000000000010 /* DroppyTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000010 /* DroppyTests.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		300000000000000000000001 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 400000000000000000000001 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 500000000000000000000001;
+			remoteInfo = Droppy;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXFileReference section */
+		200000000000000000000001 /* TouchBarApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TouchBarApp.swift; sourceTree = "<group>"; };
+		200000000000000000000002 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
+		200000000000000000000003 /* MainTouchBarController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainTouchBarController.swift; sourceTree = "<group>"; };
+		200000000000000000000004 /* OnboardingWindowController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingWindowController.swift; sourceTree = "<group>"; };
+		200000000000000000000005 /* TouchBarHostWindowController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TouchBarHostWindowController.swift; sourceTree = "<group>"; };
+		200000000000000000000006 /* PermissionsManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PermissionsManager.swift; sourceTree = "<group>"; };
+		200000000000000000000007 /* TouchBarProfileManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TouchBarProfileManager.swift; sourceTree = "<group>"; };
+		200000000000000000000008 /* Settings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Settings.swift; sourceTree = "<group>"; };
+		200000000000000000000009 /* VolumeBrightnessFeature.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VolumeBrightnessFeature.swift; sourceTree = "<group>"; };
+		20000000000000000000000A /* MediaPlayerFeature.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MediaPlayerFeature.swift; sourceTree = "<group>"; };
+		20000000000000000000000B /* ClipboardStripFeature.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClipboardStripFeature.swift; sourceTree = "<group>"; };
+		20000000000000000000000C /* FileShelfFeature.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileShelfFeature.swift; sourceTree = "<group>"; };
+		20000000000000000000000D /* AppSwitcherProfilesFeature.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppSwitcherProfilesFeature.swift; sourceTree = "<group>"; };
+		20000000000000000000000E /* SystemStatsFeature.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemStatsFeature.swift; sourceTree = "<group>"; };
+		20000000000000000000000F /* StudyTimerFeature.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StudyTimerFeature.swift; sourceTree = "<group>"; };
+		200000000000000000000010 /* DroppyTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DroppyTests.swift; sourceTree = "<group>"; };
+		200000000000000000000011 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		200000000000000000000012 /* Droppy.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Droppy.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		200000000000000000000013 /* DroppyTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = DroppyTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		600000000000000000000001 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		600000000000000000000002 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		700000000000000000000001 = {
+			isa = PBXGroup;
+			children = (
+				700000000000000000000002 /* Droppy */,
+				700000000000000000000012 /* DroppyTests */,
+				700000000000000000000013 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		700000000000000000000002 /* Droppy */ = {
+			isa = PBXGroup;
+			children = (
+				700000000000000000000003 /* App */,
+				700000000000000000000004 /* Core */,
+				700000000000000000000005 /* Features */,
+				700000000000000000000010 /* Storage */,
+				700000000000000000000011 /* Resources */,
+			);
+			path = Droppy;
+			sourceTree = "<group>";
+		};
+		700000000000000000000003 /* App */ = {
+			isa = PBXGroup;
+			children = (
+				200000000000000000000001 /* TouchBarApp.swift */,
+				200000000000000000000002 /* AppDelegate.swift */,
+				200000000000000000000003 /* MainTouchBarController.swift */,
+				200000000000000000000004 /* OnboardingWindowController.swift */,
+				200000000000000000000005 /* TouchBarHostWindowController.swift */,
+			);
+			path = App;
+			sourceTree = "<group>";
+		};
+		700000000000000000000004 /* Core */ = {
+			isa = PBXGroup;
+			children = (
+				200000000000000000000006 /* PermissionsManager.swift */,
+				200000000000000000000007 /* TouchBarProfileManager.swift */,
+			);
+			path = Core;
+			sourceTree = "<group>";
+		};
+		700000000000000000000005 /* Features */ = {
+			isa = PBXGroup;
+			children = (
+				700000000000000000000006 /* VolumeBrightness */,
+				700000000000000000000007 /* MediaPlayer */,
+				700000000000000000000008 /* ClipboardStrip */,
+				700000000000000000000009 /* FileShelf */,
+				700000000000000000000014 /* AppSwitcherProfiles */,
+				700000000000000000000015 /* SystemStats */,
+				700000000000000000000016 /* StudyTimer */,
+			);
+			path = Features;
+			sourceTree = "<group>";
+		};
+		700000000000000000000006 /* VolumeBrightness */ = {
+			isa = PBXGroup;
+			children = (
+				200000000000000000000009 /* VolumeBrightnessFeature.swift */,
+			);
+			path = VolumeBrightness;
+			sourceTree = "<group>";
+		};
+		700000000000000000000007 /* MediaPlayer */ = {
+			isa = PBXGroup;
+			children = (
+				20000000000000000000000A /* MediaPlayerFeature.swift */,
+			);
+			path = MediaPlayer;
+			sourceTree = "<group>";
+		};
+		700000000000000000000008 /* ClipboardStrip */ = {
+			isa = PBXGroup;
+			children = (
+				20000000000000000000000B /* ClipboardStripFeature.swift */,
+			);
+			path = ClipboardStrip;
+			sourceTree = "<group>";
+		};
+		700000000000000000000009 /* FileShelf */ = {
+			isa = PBXGroup;
+			children = (
+				20000000000000000000000C /* FileShelfFeature.swift */,
+			);
+			path = FileShelf;
+			sourceTree = "<group>";
+		};
+		700000000000000000000010 /* Storage */ = {
+			isa = PBXGroup;
+			children = (
+				200000000000000000000008 /* Settings.swift */,
+			);
+			path = Storage;
+			sourceTree = "<group>";
+		};
+		700000000000000000000011 /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				200000000000000000000011 /* Info.plist */,
+			);
+			path = Resources;
+			sourceTree = "<group>";
+		};
+		700000000000000000000012 /* DroppyTests */ = {
+			isa = PBXGroup;
+			children = (
+				200000000000000000000010 /* DroppyTests.swift */,
+			);
+			path = DroppyTests;
+			sourceTree = "<group>";
+		};
+		700000000000000000000013 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				200000000000000000000012 /* Droppy.app */,
+				200000000000000000000013 /* DroppyTests.xctest */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		700000000000000000000014 /* AppSwitcherProfiles */ = {
+			isa = PBXGroup;
+			children = (
+				20000000000000000000000D /* AppSwitcherProfilesFeature.swift */,
+			);
+			path = AppSwitcherProfiles;
+			sourceTree = "<group>";
+		};
+		700000000000000000000015 /* SystemStats */ = {
+			isa = PBXGroup;
+			children = (
+				20000000000000000000000E /* SystemStatsFeature.swift */,
+			);
+			path = SystemStats;
+			sourceTree = "<group>";
+		};
+		700000000000000000000016 /* StudyTimer */ = {
+			isa = PBXGroup;
+			children = (
+				20000000000000000000000F /* StudyTimerFeature.swift */,
+			);
+			path = StudyTimer;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		500000000000000000000001 /* Droppy */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 900000000000000000000003 /* Build configuration list for PBXNativeTarget "Droppy" */;
+			buildPhases = (
+				800000000000000000000001 /* Sources */,
+				600000000000000000000001 /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = Droppy;
+			productName = Droppy;
+			productReference = 200000000000000000000012 /* Droppy.app */;
+			productType = "com.apple.product-type.application";
+		};
+		500000000000000000000002 /* DroppyTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 900000000000000000000006 /* Build configuration list for PBXNativeTarget "DroppyTests" */;
+			buildPhases = (
+				800000000000000000000002 /* Sources */,
+				600000000000000000000002 /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				300000000000000000000002 /* PBXTargetDependency */,
+			);
+			name = DroppyTests;
+			productName = DroppyTests;
+			productReference = 200000000000000000000013 /* DroppyTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		400000000000000000000001 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 1600;
+				LastUpgradeCheck = 1600;
+				TargetAttributes = {
+					500000000000000000000001 = {
+						CreatedOnToolsVersion = 16.0;
+					};
+					500000000000000000000002 = {
+						CreatedOnToolsVersion = 16.0;
+						TestTargetID = 500000000000000000000001;
+					};
+				};
+			};
+			buildConfigurationList = 900000000000000000000001 /* Build configuration list for PBXProject "Droppy" */;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = 700000000000000000000001;
+			productRefGroup = 700000000000000000000013 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				500000000000000000000001 /* Droppy */,
+				500000000000000000000002 /* DroppyTests */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXSourcesBuildPhase section */
+		800000000000000000000001 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				100000000000000000000001 /* TouchBarApp.swift in Sources */,
+				100000000000000000000002 /* AppDelegate.swift in Sources */,
+				100000000000000000000003 /* MainTouchBarController.swift in Sources */,
+				100000000000000000000004 /* OnboardingWindowController.swift in Sources */,
+				100000000000000000000005 /* TouchBarHostWindowController.swift in Sources */,
+				100000000000000000000006 /* PermissionsManager.swift in Sources */,
+				100000000000000000000007 /* TouchBarProfileManager.swift in Sources */,
+				100000000000000000000008 /* Settings.swift in Sources */,
+				100000000000000000000009 /* VolumeBrightnessFeature.swift in Sources */,
+				10000000000000000000000A /* MediaPlayerFeature.swift in Sources */,
+				10000000000000000000000B /* ClipboardStripFeature.swift in Sources */,
+				10000000000000000000000C /* FileShelfFeature.swift in Sources */,
+				10000000000000000000000D /* AppSwitcherProfilesFeature.swift in Sources */,
+				10000000000000000000000E /* SystemStatsFeature.swift in Sources */,
+				10000000000000000000000F /* StudyTimerFeature.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		800000000000000000000002 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				100000000000000000000010 /* DroppyTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		300000000000000000000002 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 500000000000000000000001 /* Droppy */;
+			targetProxy = 300000000000000000000001 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		900000000000000000000002 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = macosx;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		900000000000000000000004 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = Droppy/Resources/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.ranveer.droppy;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		900000000000000000000005 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = Droppy/Resources/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.ranveer.droppy;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+		900000000000000000000007 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "";
+				CODE_SIGN_STYLE = Automatic;
+				GENERATE_INFOPLIST_FILE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.ranveer.droppy.tests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		900000000000000000000008 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "";
+				CODE_SIGN_STYLE = Automatic;
+				GENERATE_INFOPLIST_FILE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.ranveer.droppy.tests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+		900000000000000000000009 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				SDKROOT = macosx;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		900000000000000000000001 /* Build configuration list for PBXProject "Droppy" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				900000000000000000000002 /* Debug */,
+				900000000000000000000009 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		900000000000000000000003 /* Build configuration list for PBXNativeTarget "Droppy" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				900000000000000000000004 /* Debug */,
+				900000000000000000000005 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		900000000000000000000006 /* Build configuration list for PBXNativeTarget "DroppyTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				900000000000000000000007 /* Debug */,
+				900000000000000000000008 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 400000000000000000000001 /* Project object */;
+}
