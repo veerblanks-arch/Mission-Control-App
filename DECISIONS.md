@@ -13,4 +13,8 @@ These answers came from Section 7 of `touchbar-productivity-app-project-plan.md`
 
 Custom volume and brightness controls were scrapped for MVP after hardware testing. Native macOS controls already provide reliable sliders and HUD feedback, while the custom brightness implementation was unreliable on the target Mac and would require deeper/private behavior to match the system experience.
 
-Droppy currently shows its Touch Bar row only while the app is focused. That is a real limitation of the public AppKit Touch Bar path and should be revisited before building features whose whole value depends on staying visible while another app is active.
+Droppy no longer relies on being the focused app to expose its Touch Bar controls. The foundation now registers a persistent Control Strip item, then uses a system modal Touch Bar when that item or the menu-bar command is triggered.
+
+The system tray/modal bridge uses AppKit selectors that are available at runtime on the target macOS build but are not surfaced as normal Swift APIs in the public headers. This is acceptable for the personal-use MVP, but it should be retested before any distribution plan.
+
+Phase 1's custom volume and brightness controls remain deferred under this architecture. Native macOS controls are still better for those settings, and Droppy should focus first on controls that benefit from the persistent modal surface.

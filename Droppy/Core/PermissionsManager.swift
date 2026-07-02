@@ -3,7 +3,7 @@ import AppKit
 struct PermissionsManager {
     var onboardingMessage: String {
         """
-        Droppy needs macOS to show App Controls in the Touch Bar. Open Keyboard Settings, find the Touch Bar behavior setting, and choose App Controls. If that setting is disabled, the app can still run from the menu bar, but the Touch Bar row may not appear.
+        Droppy adds a persistent icon to the Touch Bar Control Strip. Tap that icon to open Droppy's modal controls from any app. If the icon does not appear, open Keyboard Settings and make sure the Control Strip is shown.
         """
     }
 

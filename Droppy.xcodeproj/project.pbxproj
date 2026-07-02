@@ -11,7 +11,6 @@
 		100000000000000000000002 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000002 /* AppDelegate.swift */; };
 		100000000000000000000003 /* MainTouchBarController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000003 /* MainTouchBarController.swift */; };
 		100000000000000000000004 /* OnboardingWindowController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000004 /* OnboardingWindowController.swift */; };
-		100000000000000000000005 /* TouchBarHostWindowController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000005 /* TouchBarHostWindowController.swift */; };
 		100000000000000000000006 /* PermissionsManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000006 /* PermissionsManager.swift */; };
 		100000000000000000000007 /* TouchBarProfileManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000007 /* TouchBarProfileManager.swift */; };
 		100000000000000000000008 /* Settings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000008 /* Settings.swift */; };
@@ -40,7 +39,6 @@
 		200000000000000000000002 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		200000000000000000000003 /* MainTouchBarController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainTouchBarController.swift; sourceTree = "<group>"; };
 		200000000000000000000004 /* OnboardingWindowController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingWindowController.swift; sourceTree = "<group>"; };
-		200000000000000000000005 /* TouchBarHostWindowController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TouchBarHostWindowController.swift; sourceTree = "<group>"; };
 		200000000000000000000006 /* PermissionsManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PermissionsManager.swift; sourceTree = "<group>"; };
 		200000000000000000000007 /* TouchBarProfileManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TouchBarProfileManager.swift; sourceTree = "<group>"; };
 		200000000000000000000008 /* Settings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Settings.swift; sourceTree = "<group>"; };
@@ -103,7 +101,6 @@
 				200000000000000000000002 /* AppDelegate.swift */,
 				200000000000000000000003 /* MainTouchBarController.swift */,
 				200000000000000000000004 /* OnboardingWindowController.swift */,
-				200000000000000000000005 /* TouchBarHostWindowController.swift */,
 			);
 			path = App;
 			sourceTree = "<group>";
@@ -303,7 +300,6 @@
 				100000000000000000000002 /* AppDelegate.swift in Sources */,
 				100000000000000000000003 /* MainTouchBarController.swift in Sources */,
 				100000000000000000000004 /* OnboardingWindowController.swift in Sources */,
-				100000000000000000000005 /* TouchBarHostWindowController.swift in Sources */,
 				100000000000000000000006 /* PermissionsManager.swift in Sources */,
 				100000000000000000000007 /* TouchBarProfileManager.swift in Sources */,
 				100000000000000000000008 /* Settings.swift in Sources */,

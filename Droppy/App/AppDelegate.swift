@@ -6,11 +6,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private lazy var onboardingWindowController = OnboardingWindowController(
         permissionsManager: permissionsManager,
         onShowTouchBar: { [weak self] in
-            self?.showTouchBarHost()
+            self?.showDroppyTouchBar()
         }
     )
     private let permissionsManager = PermissionsManager()
-    private var touchBarHostWindowController: TouchBarHostWindowController?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
@@ -20,8 +19,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         if !Settings.shared.hasSeenOnboarding {
             showSettings()
-        } else {
-            showTouchBarHost()
         }
     }
 
@@ -39,7 +36,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         let menu = NSMenu()
         menu.addItem(NSMenuItem(title: "Show Settings", action: #selector(showSettings), keyEquivalent: ","))
-        menu.addItem(NSMenuItem(title: "Show Touch Bar Row", action: #selector(showTouchBarRow), keyEquivalent: "t"))
+        menu.addItem(NSMenuItem(title: "Show Droppy Touch Bar", action: #selector(showDroppyTouchBar), keyEquivalent: "t"))
         menu.addItem(.separator())
         menu.addItem(NSMenuItem(title: "Quit Droppy", action: #selector(quit), keyEquivalent: "q"))
         menu.items.forEach { $0.target = self }
@@ -53,18 +50,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         NSApp.activate(ignoringOtherApps: true)
     }
 
-    @objc private func showTouchBarRow() {
-        showTouchBarHost()
-    }
-
-    private func showTouchBarHost() {
-        if touchBarHostWindowController == nil {
-            touchBarHostWindowController = TouchBarHostWindowController(contentController: touchBarController)
-        }
-
-        touchBarHostWindowController?.showWindow(nil)
-        touchBarHostWindowController?.window?.makeKeyAndOrderFront(nil)
-        NSApp.activate(ignoringOtherApps: true)
+    @objc private func showDroppyTouchBar() {
+        touchBarController.presentModalTouchBar()
     }
 
     @objc private func quit() {

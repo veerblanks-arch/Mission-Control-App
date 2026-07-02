@@ -45,7 +45,7 @@ private final class OnboardingViewController: NSViewController {
     override func loadView() {
         view = NSView(frame: NSRect(x: 0, y: 0, width: 520, height: 300))
 
-        let title = NSTextField(labelWithString: "Enable Touch Bar app controls")
+        let title = NSTextField(labelWithString: "Enable Droppy in the Control Strip")
         title.font = .systemFont(ofSize: 22, weight: .semibold)
 
         let body = NSTextField(wrappingLabelWithString: permissionsManager.onboardingMessage)
@@ -60,7 +60,7 @@ private final class OnboardingViewController: NSViewController {
         settingsButton.bezelStyle = .rounded
 
         let previewButton = NSButton(
-            title: "Show Touch Bar Row",
+            title: "Show Droppy Controls",
             target: self,
             action: #selector(showTouchBarRow)
         )
