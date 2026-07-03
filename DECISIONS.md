@@ -26,3 +26,14 @@ Media controls now prefer local Music/Spotify AppleScript metadata because dynam
 ## Pause decision
 
 On 2026-07-03, the Touch Bar app was paused after Phase 2 because the project was spending too much effort fighting Apple's ownership of the Touch Bar surface. The working prototype is preserved as a checkpoint, but the next product direction is a Mac overlay / Dynamic Island style app, where the UI can be built with normal windows, animations, and AppKit/SwiftUI behavior instead of private Touch Bar modal APIs.
+
+## Overlay app restart
+
+These answers came from Section 6 of `TouchbarOverlay/overlay-app-project-plan.md` before the menu-bar-first Phase 0 started.
+
+1. Global hotkey: keep `Cmd+Shift+V` for the clipboard panel.
+2. Panel behavior: build a draggable/resizable menu-bar panel first. The resting compact pill / hover-popout idea is deferred until the basic shell is stable.
+3. Scope: core-only through Phase 5. Screenshot annotation and cloud file sharing stay deferred as future ideas.
+4. Distribution: personal use first; public release can be revisited later.
+
+Phase 0 should replace the runtime Touch Bar entry point with a menu-bar status item and overlay panel shell while keeping the existing Xcode target intact.

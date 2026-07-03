@@ -22,6 +22,9 @@
 		10000000000000000000000E /* SystemStatsFeature.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20000000000000000000000E /* SystemStatsFeature.swift */; };
 		10000000000000000000000F /* StudyTimerFeature.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20000000000000000000000F /* StudyTimerFeature.swift */; };
 		100000000000000000000010 /* DroppyTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000010 /* DroppyTests.swift */; };
+		100000000000000000000011 /* StatusItemController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000014 /* StatusItemController.swift */; };
+		100000000000000000000012 /* OverlayPanelController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000015 /* OverlayPanelController.swift */; };
+		100000000000000000000013 /* OverlayRootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000016 /* OverlayRootView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -53,6 +56,9 @@
 		200000000000000000000011 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		200000000000000000000012 /* Droppy.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Droppy.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		200000000000000000000013 /* DroppyTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = DroppyTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		200000000000000000000014 /* StatusItemController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatusItemController.swift; sourceTree = "<group>"; };
+		200000000000000000000015 /* OverlayPanelController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OverlayPanelController.swift; sourceTree = "<group>"; };
+		200000000000000000000016 /* OverlayRootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OverlayRootView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -99,6 +105,8 @@
 			children = (
 				200000000000000000000001 /* TouchBarApp.swift */,
 				200000000000000000000002 /* AppDelegate.swift */,
+				200000000000000000000015 /* OverlayPanelController.swift */,
+				200000000000000000000016 /* OverlayRootView.swift */,
 				200000000000000000000003 /* MainTouchBarController.swift */,
 				200000000000000000000004 /* OnboardingWindowController.swift */,
 			);
@@ -108,6 +116,7 @@
 		700000000000000000000004 /* Core */ = {
 			isa = PBXGroup;
 			children = (
+				200000000000000000000014 /* StatusItemController.swift */,
 				200000000000000000000006 /* PermissionsManager.swift */,
 				200000000000000000000007 /* TouchBarProfileManager.swift */,
 			);
@@ -298,8 +307,11 @@
 			files = (
 				100000000000000000000001 /* TouchBarApp.swift in Sources */,
 				100000000000000000000002 /* AppDelegate.swift in Sources */,
+				100000000000000000000012 /* OverlayPanelController.swift in Sources */,
+				100000000000000000000013 /* OverlayRootView.swift in Sources */,
 				100000000000000000000003 /* MainTouchBarController.swift in Sources */,
 				100000000000000000000004 /* OnboardingWindowController.swift in Sources */,
+				100000000000000000000011 /* StatusItemController.swift in Sources */,
 				100000000000000000000006 /* PermissionsManager.swift in Sources */,
 				100000000000000000000007 /* TouchBarProfileManager.swift in Sources */,
 				100000000000000000000008 /* Settings.swift in Sources */,

@@ -3,14 +3,14 @@ import AppKit
 struct PermissionsManager {
     var onboardingMessage: String {
         """
-        Droppy adds a persistent icon to the Touch Bar Control Strip. Tap that icon to open Droppy's modal controls from any app. If the icon does not appear, open Keyboard Settings and make sure the Control Strip is shown.
+        Droppy now lives in the menu bar. Phase 0 does not need special permissions, but later clipboard, drag monitoring, and media features may ask for local-only macOS permissions here.
         """
     }
 
-    func openKeyboardSettings() {
+    func openPrivacySettings() {
         let candidates = [
-            "x-apple.systempreferences:com.apple.Keyboard-Settings.extension",
-            "x-apple.systempreferences:com.apple.preference.keyboard"
+            "x-apple.systempreferences:com.apple.preference.security?Privacy",
+            "x-apple.systempreferences:com.apple.preference.security"
         ]
 
         for candidate in candidates {

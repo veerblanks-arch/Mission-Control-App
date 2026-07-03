@@ -1,21 +1,19 @@
 import AppKit
 
-final class OnboardingWindowController: NSWindowController {
+final class SettingsWindowController: NSWindowController {
     private let permissionsManager: PermissionsManager
-    private let onShowTouchBar: () -> Void
 
-    init(permissionsManager: PermissionsManager, onShowTouchBar: @escaping () -> Void) {
+    init(permissionsManager: PermissionsManager) {
         self.permissionsManager = permissionsManager
-        self.onShowTouchBar = onShowTouchBar
 
         let viewController = OnboardingViewController(
-            permissionsManager: permissionsManager,
-            onShowTouchBar: onShowTouchBar
+            permissionsManager: permissionsManager
         )
         let window = NSWindow(contentViewController: viewController)
-        window.title = "Droppy Setup"
+        window.title = "Droppy Settings"
         window.styleMask = [.titled, .closable, .miniaturizable]
         window.setContentSize(NSSize(width: 520, height: 300))
+        window.isReleasedWhenClosed = false
         window.center()
 
         super.init(window: window)
@@ -29,11 +27,9 @@ final class OnboardingWindowController: NSWindowController {
 
 private final class OnboardingViewController: NSViewController {
     private let permissionsManager: PermissionsManager
-    private let onShowTouchBar: () -> Void
 
-    init(permissionsManager: PermissionsManager, onShowTouchBar: @escaping () -> Void) {
+    init(permissionsManager: PermissionsManager) {
         self.permissionsManager = permissionsManager
-        self.onShowTouchBar = onShowTouchBar
         super.init(nibName: nil, bundle: nil)
     }
 
@@ -45,7 +41,7 @@ private final class OnboardingViewController: NSViewController {
     override func loadView() {
         view = NSView(frame: NSRect(x: 0, y: 0, width: 520, height: 300))
 
-        let title = NSTextField(labelWithString: "Enable Droppy in the Control Strip")
+        let title = NSTextField(labelWithString: "Droppy Overlay")
         title.font = .systemFont(ofSize: 22, weight: .semibold)
 
         let body = NSTextField(wrappingLabelWithString: permissionsManager.onboardingMessage)
@@ -53,16 +49,16 @@ private final class OnboardingViewController: NSViewController {
         body.textColor = .secondaryLabelColor
 
         let settingsButton = NSButton(
-            title: "Open Keyboard Settings",
+            title: "Open Privacy Settings",
             target: self,
-            action: #selector(openKeyboardSettings)
+            action: #selector(openPrivacySettings)
         )
         settingsButton.bezelStyle = .rounded
 
         let previewButton = NSButton(
-            title: "Show Droppy Controls",
+            title: "Done",
             target: self,
-            action: #selector(showTouchBarRow)
+            action: #selector(closeWindow)
         )
         previewButton.bezelStyle = .rounded
         previewButton.keyEquivalent = "\r"
@@ -87,11 +83,11 @@ private final class OnboardingViewController: NSViewController {
         ])
     }
 
-    @objc private func openKeyboardSettings() {
-        permissionsManager.openKeyboardSettings()
+    @objc private func openPrivacySettings() {
+        permissionsManager.openPrivacySettings()
     }
 
-    @objc private func showTouchBarRow() {
-        onShowTouchBar()
+    @objc private func closeWindow() {
+        view.window?.close()
     }
 }
