@@ -41,6 +41,12 @@ final class StatusItemController: NSObject {
         statusItem = nil
     }
 
+    func showOverlayAfterLaunch() {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) { [weak self] in
+            self?.showOverlay()
+        }
+    }
+
     @objc private func statusItemClicked(_ sender: NSStatusBarButton) {
         let event = NSApp.currentEvent
         if event?.type == .rightMouseUp || event?.modifierFlags.contains(.control) == true {
@@ -57,7 +63,12 @@ final class StatusItemController: NSObject {
         menu.addItem(menuItem(title: "Settings", action: #selector(showSettings)))
         menu.addItem(.separator())
         menu.addItem(menuItem(title: "Quit Droppy", action: #selector(quit), keyEquivalent: "q"))
-        statusItem?.popUpMenu(menu)
+
+        guard let button = statusItem?.button else {
+            return
+        }
+
+        menu.popUp(positioning: nil, at: NSPoint(x: 0, y: button.bounds.height + 4), in: button)
     }
 
     private func menuItem(
@@ -71,6 +82,10 @@ final class StatusItemController: NSObject {
     }
 
     @objc private func openDroppy() {
+        showOverlay()
+    }
+
+    private func showOverlay() {
         guard let button = statusItem?.button else {
             return
         }

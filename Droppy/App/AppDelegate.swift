@@ -35,6 +35,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         hasCompletedStartup = true
         statusItemController.start()
+        statusItemController.showOverlayAfterLaunch()
 
         if !Settings.shared.hasSeenOnboarding {
             showSettings()
