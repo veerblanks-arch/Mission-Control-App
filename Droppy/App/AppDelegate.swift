@@ -16,6 +16,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         permissionsManager: permissionsManager
     )
     private let permissionsManager = PermissionsManager()
+    private let clipboardManager = ClipboardManagerFeature.shared
+    private let hotKeyManager = GlobalHotKeyManager()
     private var hasCompletedStartup = false
 
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -34,7 +36,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         hasCompletedStartup = true
+        clipboardManager.start()
         statusItemController.start()
+        hotKeyManager.registerCommandShiftV { [weak self] in
+            self?.statusItemController.showClipboard()
+        }
         statusItemController.showOverlayAfterLaunch()
 
         if !Settings.shared.hasSeenOnboarding {
@@ -73,6 +79,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationWillTerminate(_ notification: Notification) {
+        hotKeyManager.unregister()
+        clipboardManager.stop()
         statusItemController.stop()
     }
 

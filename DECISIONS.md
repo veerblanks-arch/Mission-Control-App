@@ -37,3 +37,9 @@ These answers came from Section 6 of `TouchbarOverlay/overlay-app-project-plan.m
 4. Distribution: personal use first; public release can be revisited later.
 
 Phase 0 should replace the runtime Touch Bar entry point with a menu-bar status item and overlay panel shell while keeping the existing Xcode target intact.
+
+## Phase 1 notes
+
+Calendar integration should be considered after the four core features are stable. The useful version should match the user's real calendar, which means it needs an explicit calendar-source decision later rather than a fake standalone calendar widget now.
+
+For the first clipboard-manager implementation, use a clean local persistence boundary rather than adding package/network dependency work. GRDB/SQLite can replace the store later if the history model needs heavier querying.

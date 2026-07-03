@@ -47,6 +47,14 @@ final class StatusItemController: NSObject {
         }
     }
 
+    func showClipboard() {
+        guard let button = statusItem?.button else {
+            return
+        }
+
+        overlayPanelController.showClipboard(relativeTo: button)
+    }
+
     @objc private func statusItemClicked(_ sender: NSStatusBarButton) {
         let event = NSApp.currentEvent
         if event?.type == .rightMouseUp || event?.modifierFlags.contains(.control) == true {

@@ -9,6 +9,7 @@ final class OverlayPanelController: NSWindowController, NSWindowDelegate {
     }
 
     private var lastStatusButton: NSStatusBarButton?
+    private let model = OverlayPanelModel()
 
     init() {
         let panel = NSPanel(
@@ -28,7 +29,12 @@ final class OverlayPanelController: NSWindowController, NSWindowDelegate {
         panel.hidesOnDeactivate = false
         panel.isMovableByWindowBackground = true
         panel.minSize = Constants.minimumSize
-        panel.contentViewController = NSHostingController(rootView: OverlayRootView())
+        panel.contentViewController = NSHostingController(
+            rootView: OverlayRootView(
+                model: model,
+                clipboardManager: .shared
+            )
+        )
 
         super.init(window: panel)
 
@@ -53,6 +59,11 @@ final class OverlayPanelController: NSWindowController, NSWindowDelegate {
         positionPanel(relativeTo: statusButton)
         showWindow(nil)
         window?.orderFrontRegardless()
+    }
+
+    func showClipboard(relativeTo statusButton: NSStatusBarButton) {
+        model.selectedFeature = .clipboard
+        show(relativeTo: statusButton)
     }
 
     func windowDidResize(_ notification: Notification) {
@@ -86,4 +97,8 @@ final class OverlayPanelController: NSWindowController, NSWindowDelegate {
         panelFrame.origin.y = max(panelFrame.origin.y, visibleFrame.minY + 12)
         window.setFrame(panelFrame, display: true)
     }
+}
+
+final class OverlayPanelModel: ObservableObject {
+    @Published var selectedFeature: OverlayFeature = .clipboard
 }
