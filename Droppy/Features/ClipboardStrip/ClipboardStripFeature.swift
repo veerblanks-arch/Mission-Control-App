@@ -8,6 +8,7 @@ final class ClipboardManagerFeature: ObservableObject {
     @Published private(set) var items: [ClipboardItem] = []
 
     private let store = ClipboardHistoryStore()
+    private var screenshotScanner = ScreenshotScanner()
     private var timer: Timer?
     private var lastChangeCount = NSPasteboard.general.changeCount
     private let maxItems = 100
@@ -22,8 +23,10 @@ final class ClipboardManagerFeature: ObservableObject {
         }
 
         captureCurrentClipboardIfNeeded()
+        captureNewScreenshots()
         timer = Timer.scheduledTimer(withTimeInterval: 0.6, repeats: true) { [weak self] _ in
             self?.captureCurrentClipboardIfNeeded()
+            self?.captureNewScreenshots()
         }
     }
 
@@ -70,6 +73,20 @@ final class ClipboardManagerFeature: ObservableObject {
             return
         }
 
+        insert(item)
+    }
+
+    private func captureNewScreenshots() {
+        for screenshotURL in screenshotScanner.newScreenshotURLs() {
+            guard let item = ClipboardItem(screenshotURL: screenshotURL) else {
+                continue
+            }
+
+            insert(item)
+        }
+    }
+
+    private func insert(_ item: ClipboardItem) {
         if items.first?.signature == item.signature {
             return
         }
@@ -168,6 +185,105 @@ struct ClipboardItem: Identifiable, Codable, Equatable {
         }
 
         return nil
+    }
+
+    init?(screenshotURL: URL) {
+        guard
+            let image = NSImage(contentsOf: screenshotURL),
+            let imageData = image.pngData
+        else {
+            return nil
+        }
+
+        id = UUID()
+        kind = .image
+        title = screenshotURL.lastPathComponent
+        subtitle = "Screenshot - \(Int(image.size.width)) x \(Int(image.size.height))"
+        text = nil
+        filePaths = [screenshotURL.path]
+        imagePNGData = imageData
+        createdAt = Date()
+        sourceApp = "Screenshot"
+        pinned = false
+    }
+}
+
+private final class ScreenshotScanner {
+    private let fileManager: FileManager
+    private let desktopURL: URL
+    private var knownPaths: Set<String>
+
+    init(fileManager: FileManager = .default) {
+        self.fileManager = fileManager
+        desktopURL = fileManager.urls(for: .desktopDirectory, in: .userDomainMask).first
+            ?? URL(fileURLWithPath: NSHomeDirectory()).appendingPathComponent("Desktop", isDirectory: true)
+        knownPaths = ScreenshotScanner.currentScreenshotPaths(in: desktopURL, fileManager: fileManager)
+    }
+
+    func newScreenshotURLs() -> [URL] {
+        let urls = screenshotURLs(in: desktopURL)
+        let newURLs = urls.filter { !knownPaths.contains($0.path) }
+        knownPaths.formUnion(urls.map(\.path))
+        return newURLs
+    }
+
+    private func screenshotURLs(in folderURL: URL) -> [URL] {
+        guard
+            let contents = try? fileManager.contentsOfDirectory(
+                at: folderURL,
+                includingPropertiesForKeys: [.contentModificationDateKey, .fileSizeKey],
+                options: [.skipsHiddenFiles]
+            )
+        else {
+            return []
+        }
+
+        return contents
+            .filter(isScreenshotImage)
+            .sorted { lhs, rhs in
+                let lhsDate = (try? lhs.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate) ?? .distantPast
+                let rhsDate = (try? rhs.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate) ?? .distantPast
+                return lhsDate < rhsDate
+            }
+    }
+
+    private func isScreenshotImage(_ url: URL) -> Bool {
+        let filename = url.lastPathComponent.lowercased()
+        let ext = url.pathExtension.lowercased()
+        let imageExtensions: Set<String> = ["png", "jpg", "jpeg", "heic", "tiff"]
+        guard imageExtensions.contains(ext) else {
+            return false
+        }
+
+        guard filename.contains("screenshot") || filename.contains("screen shot") else {
+            return false
+        }
+
+        let values = try? url.resourceValues(forKeys: [.fileSizeKey])
+        return (values?.fileSize ?? 0) > 0
+    }
+
+    private static func currentScreenshotPaths(in folderURL: URL, fileManager: FileManager) -> Set<String> {
+        guard
+            let contents = try? fileManager.contentsOfDirectory(
+                at: folderURL,
+                includingPropertiesForKeys: nil,
+                options: [.skipsHiddenFiles]
+            )
+        else {
+            return []
+        }
+
+        return Set(
+            contents
+                .filter { url in
+                    let filename = url.lastPathComponent.lowercased()
+                    let ext = url.pathExtension.lowercased()
+                    return ["png", "jpg", "jpeg", "heic", "tiff"].contains(ext)
+                        && (filename.contains("screenshot") || filename.contains("screen shot"))
+                }
+                .map(\.path)
+        )
     }
 }
 

@@ -10,6 +10,8 @@ final class OverlayPanelController: NSWindowController, NSWindowDelegate {
 
     private var lastStatusButton: NSStatusBarButton?
     private let model = OverlayPanelModel()
+    private var hasCustomPanelPosition = false
+    private var isProgrammaticallyPositioning = false
 
     init() {
         let panel = NSPanel(
@@ -56,7 +58,9 @@ final class OverlayPanelController: NSWindowController, NSWindowDelegate {
 
     func show(relativeTo statusButton: NSStatusBarButton) {
         lastStatusButton = statusButton
-        positionPanel(relativeTo: statusButton)
+        if !hasCustomPanelPosition {
+            positionPanel(relativeTo: statusButton)
+        }
         showWindow(nil)
         window?.orderFrontRegardless()
     }
@@ -67,11 +71,19 @@ final class OverlayPanelController: NSWindowController, NSWindowDelegate {
     }
 
     func windowDidResize(_ notification: Notification) {
-        guard let lastStatusButton else {
+        if isProgrammaticallyPositioning {
             return
         }
 
-        positionPanel(relativeTo: lastStatusButton)
+        hasCustomPanelPosition = true
+    }
+
+    func windowDidMove(_ notification: Notification) {
+        if isProgrammaticallyPositioning {
+            return
+        }
+
+        hasCustomPanelPosition = true
     }
 
     private func positionPanel(relativeTo statusButton: NSStatusBarButton) {
@@ -95,7 +107,11 @@ final class OverlayPanelController: NSWindowController, NSWindowDelegate {
         panelFrame.origin.y = buttonFrameOnScreen.minY - panelFrame.height - Constants.topPadding
         panelFrame.origin.x = min(max(panelFrame.origin.x, visibleFrame.minX + 12), visibleFrame.maxX - panelFrame.width - 12)
         panelFrame.origin.y = max(panelFrame.origin.y, visibleFrame.minY + 12)
+        isProgrammaticallyPositioning = true
         window.setFrame(panelFrame, display: true)
+        DispatchQueue.main.async { [weak self] in
+            self?.isProgrammaticallyPositioning = false
+        }
     }
 }
 

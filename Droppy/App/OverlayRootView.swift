@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 
 struct OverlayRootView: View {
@@ -53,6 +54,7 @@ struct OverlayRootView: View {
         .padding(.horizontal, 18)
         .padding(.top, 18)
         .padding(.bottom, 16)
+        .overlay(WindowDragHandle())
     }
 
     @ViewBuilder
@@ -87,6 +89,24 @@ struct OverlayRootView: View {
                 .frame(maxWidth: 280)
         }
         .padding(24)
+    }
+}
+
+private struct WindowDragHandle: NSViewRepresentable {
+    func makeNSView(context: Context) -> NSView {
+        DragHandleView()
+    }
+
+    func updateNSView(_ nsView: NSView, context: Context) {}
+}
+
+private final class DragHandleView: NSView {
+    override var mouseDownCanMoveWindow: Bool {
+        true
+    }
+
+    override func mouseDown(with event: NSEvent) {
+        window?.performDrag(with: event)
     }
 }
 
