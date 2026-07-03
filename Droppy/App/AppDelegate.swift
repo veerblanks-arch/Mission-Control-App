@@ -1,4 +1,5 @@
 import AppKit
+import Darwin
 
 final class AppDelegate: NSObject, NSApplicationDelegate {
     private let statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
@@ -10,9 +11,24 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     )
     private let permissionsManager = PermissionsManager()
+    private var hasCompletedStartup = false
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
+
+        if terminateOtherRunningInstancesIfNeeded() {
+            return
+        }
+
+        completeStartup()
+    }
+
+    private func completeStartup() {
+        guard !hasCompletedStartup else {
+            return
+        }
+
+        hasCompletedStartup = true
         configureStatusItem()
         TouchBarProfileManager.shared.start()
         touchBarController.start()
@@ -20,6 +36,36 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if !Settings.shared.hasSeenOnboarding {
             showSettings()
         }
+    }
+
+    private func terminateOtherRunningInstancesIfNeeded() -> Bool {
+        guard let bundleIdentifier = Bundle.main.bundleIdentifier else {
+            return false
+        }
+
+        let currentProcessIdentifier = getpid()
+        let otherInstances = NSRunningApplication.runningApplications(withBundleIdentifier: bundleIdentifier)
+            .filter { $0.processIdentifier != currentProcessIdentifier }
+
+        guard !otherInstances.isEmpty else {
+            return false
+        }
+
+        otherInstances.forEach { app in
+            if !app.terminate() {
+                app.forceTerminate()
+            }
+        }
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) { [weak self] in
+            let remainingInstances = NSRunningApplication.runningApplications(withBundleIdentifier: bundleIdentifier)
+                .filter { $0.processIdentifier != currentProcessIdentifier }
+
+            remainingInstances.forEach { $0.forceTerminate() }
+            self?.completeStartup()
+        }
+
+        return true
     }
 
     func applicationWillTerminate(_ notification: Notification) {

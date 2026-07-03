@@ -18,3 +18,11 @@ Droppy no longer relies on being the focused app to expose its Touch Bar control
 The system tray/modal bridge uses AppKit selectors that are available at runtime on the target macOS build but are not surfaced as normal Swift APIs in the public headers. It also requires `DFRElementSetControlStripPresenceForIdentifier` from the private DFRFoundation framework so the Droppy icon actually appears in the minimized Control Strip. This is acceptable for the personal-use MVP, but it should be retested before any distribution plan.
 
 Phase 1's custom volume and brightness controls remain deferred under this architecture. Native macOS controls are still better for those settings, and Droppy should focus first on controls that benefit from the persistent modal surface.
+
+## Phase 2 notes
+
+Media controls now prefer local Music/Spotify AppleScript metadata because dynamically loaded `MediaRemote.framework` repeatedly returned nil or `Operation not permitted` on the target machine. MediaRemote remains a fallback for transport commands and unsupported players. Music.app metadata, artwork, tinting, and scrubber behavior were verified on hardware after fixing an artwork pipe deadlock in the `osascript` runner.
+
+## Pause decision
+
+On 2026-07-03, the Touch Bar app was paused after Phase 2 because the project was spending too much effort fighting Apple's ownership of the Touch Bar surface. The working prototype is preserved as a checkpoint, but the next product direction is a Mac overlay / Dynamic Island style app, where the UI can be built with normal windows, animations, and AppKit/SwiftUI behavior instead of private Touch Bar modal APIs.

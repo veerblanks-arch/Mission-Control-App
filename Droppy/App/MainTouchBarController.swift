@@ -4,23 +4,29 @@ import Darwin
 final class MainTouchBarController: NSViewController, NSTouchBarDelegate {
     private enum Constants {
         static let touchBarIdentifier = NSTouchBar.CustomizationIdentifier("com.ranveer.droppy.touchbar.main")
-        static let modalAutoMinimizeDelay: TimeInterval = 12
     }
 
     private var systemTrayItem: NSTouchBarItem?
     private var activeModalTouchBar: NSTouchBar?
-    private var modalAutoMinimizeTimer: Timer?
+    private let mediaPlayer = MediaPlayerFeature.shared
+    private weak var mediaTouchBarView: MediaTouchBarView?
 
     func start() {
+        mediaPlayer.onStateChange = { [weak self] state in
+            self?.mediaTouchBarView?.configure(with: state)
+        }
+        mediaPlayer.start()
+
         DispatchQueue.main.async { [weak self] in
             self?.registerSystemTrayItem()
         }
     }
 
     func stop() {
-        modalAutoMinimizeTimer?.invalidate()
         dismissModalTouchBar()
         unregisterSystemTrayItem()
+        mediaPlayer.stop()
+        mediaPlayer.onStateChange = nil
     }
 
     override func loadView() {
@@ -48,17 +54,18 @@ final class MainTouchBarController: NSViewController, NSTouchBarDelegate {
             return
         }
 
+        if let activeModalTouchBar {
+            SystemModalTouchBarBridge.dismiss(activeModalTouchBar)
+            self.activeModalTouchBar = nil
+        }
+
         let touchBar = makeModalTouchBar()
         activeModalTouchBar = touchBar
         NSLog("Droppy Touch Bar: presenting modal bar.")
         SystemModalTouchBarBridge.present(touchBar, systemTrayItemIdentifier: .droppySystemTray)
-        scheduleModalAutoMinimize()
     }
 
     func dismissModalTouchBar() {
-        modalAutoMinimizeTimer?.invalidate()
-        modalAutoMinimizeTimer = nil
-
         if let activeModalTouchBar {
             SystemModalTouchBarBridge.dismiss(activeModalTouchBar)
         }
@@ -67,12 +74,14 @@ final class MainTouchBarController: NSViewController, NSTouchBarDelegate {
     }
 
     private func minimizeModalTouchBar() {
-        modalAutoMinimizeTimer?.invalidate()
-        modalAutoMinimizeTimer = nil
-
-        if let activeModalTouchBar {
-            SystemModalTouchBarBridge.minimize(activeModalTouchBar)
+        guard let activeModalTouchBar else {
+            refreshSystemTrayPresence()
+            return
         }
+
+        SystemModalTouchBarBridge.minimize(activeModalTouchBar)
+        self.activeModalTouchBar = nil
+        refreshSystemTrayPresence()
     }
 
     private func registerSystemTrayItem() {
@@ -104,6 +113,18 @@ final class MainTouchBarController: NSViewController, NSTouchBarDelegate {
         systemTrayItem = item
     }
 
+    private func refreshSystemTrayPresence() {
+        if systemTrayItem == nil {
+            registerSystemTrayItem()
+            return
+        }
+
+        SystemModalTouchBarBridge.setControlStripPresence(true, for: .droppySystemTray)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+            SystemModalTouchBarBridge.setControlStripPresence(true, for: .droppySystemTray)
+        }
+    }
+
     private func unregisterSystemTrayItem() {
         guard let systemTrayItem else {
             return
@@ -119,16 +140,12 @@ final class MainTouchBarController: NSViewController, NSTouchBarDelegate {
         touchBar.delegate = self
         touchBar.customizationIdentifier = Constants.touchBarIdentifier
         touchBar.defaultItemIdentifiers = [
-            .droppyControlsHeader,
+            .droppyMinimize,
             .droppyMedia,
+            .flexibleSpace,
             .droppyClipboard,
             .droppyShelf,
-            .droppyCodexProfile,
-            .droppyStats,
-            .droppyTimer,
-            .flexibleSpace,
-            .droppyProfileStatus,
-            .droppyMinimize
+            .droppyCodexProfile
         ]
         touchBar.customizationAllowedItemIdentifiers = touchBar.defaultItemIdentifiers
         touchBar.escapeKeyReplacementItemIdentifier = .droppyMinimize
@@ -140,7 +157,7 @@ final class MainTouchBarController: NSViewController, NSTouchBarDelegate {
         case .droppyControlsHeader:
             return controlsHeaderItem(identifier: identifier)
         case .droppyMedia:
-            return iconButton(identifier: identifier, symbolName: "music.note", label: "Media")
+            return mediaPlayerItem(identifier: identifier)
         case .droppyClipboard:
             return iconButton(identifier: identifier, symbolName: "doc.on.clipboard", label: "Clipboard")
         case .droppyShelf:
@@ -154,7 +171,7 @@ final class MainTouchBarController: NSViewController, NSTouchBarDelegate {
         case .droppyProfileStatus:
             return profileStatusItem(identifier: identifier)
         case .droppyMinimize:
-            return actionButton(identifier: identifier, symbolName: "chevron.down", label: "Minimize", action: #selector(minimizeButtonTapped))
+            return actionButton(identifier: identifier, symbolName: "chevron.down", label: "Close", action: #selector(minimizeButtonTapped))
         default:
             return nil
         }
@@ -169,6 +186,28 @@ final class MainTouchBarController: NSViewController, NSTouchBarDelegate {
         label.toolTip = "Droppy controls"
         item.view = label
         item.customizationLabel = "Droppy"
+        return item
+    }
+
+    private func mediaPlayerItem(identifier: NSTouchBarItem.Identifier) -> NSTouchBarItem {
+        let item = NSCustomTouchBarItem(identifier: identifier)
+        let mediaView = MediaTouchBarView()
+        mediaView.onPrevious = { [weak self] in
+            self?.mediaPlayer.previousTrack()
+        }
+        mediaView.onTogglePlayPause = { [weak self] in
+            self?.mediaPlayer.togglePlayPause()
+        }
+        mediaView.onNext = { [weak self] in
+            self?.mediaPlayer.nextTrack()
+        }
+        mediaView.onScrub = { [weak self] progress in
+            self?.mediaPlayer.seek(toProgress: progress)
+        }
+        mediaView.configure(with: mediaPlayer.state)
+        mediaTouchBarView = mediaView
+        item.view = mediaView
+        item.customizationLabel = "Media"
         return item
     }
 
@@ -220,16 +259,6 @@ final class MainTouchBarController: NSViewController, NSTouchBarDelegate {
             return "Codex profile"
         case .default:
             return "Droppy ready"
-        }
-    }
-
-    private func scheduleModalAutoMinimize() {
-        modalAutoMinimizeTimer?.invalidate()
-        modalAutoMinimizeTimer = Timer.scheduledTimer(
-            withTimeInterval: Constants.modalAutoMinimizeDelay,
-            repeats: false
-        ) { [weak self] _ in
-            self?.minimizeModalTouchBar()
         }
     }
 
@@ -366,4 +395,5 @@ private enum SystemModalTouchBarBridge {
 
         _ = NSTouchBar.perform(minimizeSelector, with: touchBar)
     }
+
 }
