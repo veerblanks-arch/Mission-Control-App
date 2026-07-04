@@ -7,6 +7,40 @@ struct OverlayRootView: View {
     @State private var clipboardSearchText = ""
 
     var body: some View {
+        Group {
+            if model.isExpanded {
+                expandedBody
+            } else {
+                collapsedBody
+            }
+        }
+    }
+
+    private var collapsedBody: some View {
+        Button {
+            model.expand()
+        } label: {
+            HStack(spacing: 10) {
+                Image(systemName: "rectangle.on.rectangle.angled")
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundStyle(.white)
+
+                Text("Droppy")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(.white)
+            }
+            .frame(width: 220, height: 44)
+            .background(.black, in: Capsule())
+            .overlay {
+                Capsule()
+                    .strokeBorder(.white.opacity(0.16), lineWidth: 1)
+            }
+            .shadow(color: .black.opacity(0.22), radius: 18, y: 8)
+        }
+        .buttonStyle(.plain)
+    }
+
+    private var expandedBody: some View {
         VStack(spacing: 0) {
             header
 
@@ -50,11 +84,22 @@ struct OverlayRootView: View {
             }
 
             Spacer()
+
+            Button {
+                model.collapse()
+            } label: {
+                Image(systemName: "chevron.up")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(.secondary)
+                    .frame(width: 28, height: 28)
+                    .background(.thinMaterial, in: Circle())
+            }
+            .buttonStyle(.plain)
+            .help("Collapse")
         }
         .padding(.horizontal, 18)
         .padding(.top, 18)
         .padding(.bottom, 16)
-        .overlay(WindowDragHandle())
     }
 
     @ViewBuilder
@@ -89,24 +134,6 @@ struct OverlayRootView: View {
                 .frame(maxWidth: 280)
         }
         .padding(24)
-    }
-}
-
-private struct WindowDragHandle: NSViewRepresentable {
-    func makeNSView(context: Context) -> NSView {
-        DragHandleView()
-    }
-
-    func updateNSView(_ nsView: NSView, context: Context) {}
-}
-
-private final class DragHandleView: NSView {
-    override var mouseDownCanMoveWindow: Bool {
-        true
-    }
-
-    override func mouseDown(with event: NSEvent) {
-        window?.performDrag(with: event)
     }
 }
 

@@ -80,7 +80,7 @@ OverlayApp/
 - Poll `NSPasteboard.general.changeCount`, store history in SQLite (GRDB): text/image/file, timestamp, source app, pinned flag.
 - Panel UI: scrollable list, text snippet/image thumbnail previews, click to copy-and-paste.
 - OCR via `Vision` (`VNRecognizeTextRequest`) on copied images — fully local.
-- Global hotkey (e.g. `Cmd+Shift+V`) to open the panel directly to clipboard view.
+- No default global hotkey for now; the user already has custom MacBook hotkeys. Revisit only as an optional setting later.
 
 ### Phase 2 — Quick File Shelf
 - Drag files onto the panel (or directly onto the menu bar icon while the panel's closed) to stash them.
@@ -99,7 +99,7 @@ OverlayApp/
 - This is a straightforward reuse of whatever you learned building this in the Touch Bar attempt, just rendered in a normal SwiftUI view instead of constrained Touch Bar items — should actually be easier this time.
 
 ### Phase 5 — Polish pass on the menu-bar experience
-- Settings window: toggle features, hotkeys, launch-at-login.
+- Settings window: toggle features, optional hotkeys, launch-at-login.
 - Consistent animation/spring curve across panel open/close and internal transitions.
 - This is a real "ship it as v1" checkpoint — the app should be fully usable and polished as a menu-bar tool before any notch work begins.
 
@@ -117,7 +117,7 @@ OverlayApp/
 ---
 
 ## 6. Open questions
-1. Same global hotkey scheme as planned before (`Cmd+Shift+V` for clipboard), or a preference for something else?
+1. Global hotkey decision: no default hotkey for now because the user's MacBook already has custom hotkeys. Optional hotkeys can be revisited later.
 2. Should the panel be a fixed size/position under the menu bar icon, or resizable/draggable by the user?
 3. Any interest in the screenshot annotation editor or cloud file-sharing stretch goals from the original plan, or staying scoped to the four core features through Phase 5?
 4. Distribution scope unchanged — just for you, or eventually others?
