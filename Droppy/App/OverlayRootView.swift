@@ -20,24 +20,17 @@ struct OverlayRootView: View {
         Button {
             model.expand()
         } label: {
-            HStack(spacing: 10) {
-                Image(systemName: "rectangle.on.rectangle.angled")
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundStyle(.white)
-
-                Text("Droppy")
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundStyle(.white)
-            }
-            .frame(width: 220, height: 44)
+            Color.clear
+            .frame(width: 112, height: 24)
             .background(.black, in: Capsule())
             .overlay {
                 Capsule()
                     .strokeBorder(.white.opacity(0.16), lineWidth: 1)
             }
-            .shadow(color: .black.opacity(0.22), radius: 18, y: 8)
+            .shadow(color: .black.opacity(0.18), radius: 10, y: 3)
         }
         .buttonStyle(.plain)
+        .accessibilityLabel("Open Droppy")
     }
 
     private var expandedBody: some View {

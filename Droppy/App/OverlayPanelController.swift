@@ -4,7 +4,7 @@ import SwiftUI
 
 final class OverlayPanelController: NSWindowController, NSWindowDelegate {
     private enum Constants {
-        static let collapsedSize = NSSize(width: 220, height: 44)
+        static let collapsedSize = NSSize(width: 112, height: 24)
         static let expandedSize = NSSize(width: 420, height: 560)
         static let topPadding: CGFloat = 0
         static let screenEdgePadding: CGFloat = 12
@@ -12,6 +12,7 @@ final class OverlayPanelController: NSWindowController, NSWindowDelegate {
 
     private let model = OverlayPanelModel()
     private var cancellables: Set<AnyCancellable> = []
+    private var anchorScreen: NSScreen?
 
     init() {
         let panel = NSPanel(
@@ -54,6 +55,8 @@ final class OverlayPanelController: NSWindowController, NSWindowDelegate {
     }
 
     func toggle(relativeTo statusButton: NSStatusBarButton) {
+        updateAnchor(relativeTo: statusButton)
+
         if window?.isVisible == true {
             model.toggleExpanded()
         } else {
@@ -63,13 +66,19 @@ final class OverlayPanelController: NSWindowController, NSWindowDelegate {
     }
 
     func show(relativeTo statusButton: NSStatusBarButton) {
+        updateAnchor(relativeTo: statusButton)
         show()
     }
 
     func showClipboard(relativeTo statusButton: NSStatusBarButton) {
+        updateAnchor(relativeTo: statusButton)
         model.selectedFeature = .clipboard
         model.expand()
         show()
+    }
+
+    private func updateAnchor(relativeTo statusButton: NSStatusBarButton) {
+        anchorScreen = statusButton.window?.screen ?? NSScreen.main
     }
 
     private func show() {
@@ -79,13 +88,16 @@ final class OverlayPanelController: NSWindowController, NSWindowDelegate {
     }
 
     private func positionPanel(animated: Bool) {
-        guard let window, let screen = window.screen ?? NSScreen.main else {
+        guard let window, let screen = anchorScreen ?? window.screen ?? NSScreen.main else {
             return
         }
 
         let size = model.isExpanded ? Constants.expandedSize : Constants.collapsedSize
         let screenFrame = screen.frame
-        let topY = screenFrame.maxY - Constants.topPadding
+        let menuBarHeight = max(screenFrame.maxY - screen.visibleFrame.maxY, Constants.collapsedSize.height)
+        let collapsedTopInset = max((menuBarHeight - size.height) / 2, 0)
+        let topInset = model.isExpanded ? Constants.topPadding : collapsedTopInset
+        let topY = screenFrame.maxY - topInset
         var frame = NSRect(
             x: screenFrame.midX - size.width / 2,
             y: topY - size.height,
