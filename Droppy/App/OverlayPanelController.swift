@@ -6,7 +6,8 @@ final class OverlayPanelController: NSWindowController, NSWindowDelegate {
     private enum Constants {
         static let collapsedSize = NSSize(width: 220, height: 44)
         static let expandedSize = NSSize(width: 420, height: 560)
-        static let topPadding: CGFloat = 8
+        static let topPadding: CGFloat = 0
+        static let screenEdgePadding: CGFloat = 12
     }
 
     private let model = OverlayPanelModel()
@@ -21,7 +22,7 @@ final class OverlayPanelController: NSWindowController, NSWindowDelegate {
         )
         panel.title = "Droppy"
         panel.isFloatingPanel = true
-        panel.level = .floating
+        panel.level = .statusBar
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
         panel.backgroundColor = .clear
         panel.isOpaque = false
@@ -83,16 +84,19 @@ final class OverlayPanelController: NSWindowController, NSWindowDelegate {
         }
 
         let size = model.isExpanded ? Constants.expandedSize : Constants.collapsedSize
-        let visibleFrame = screen.visibleFrame
-        let topY = visibleFrame.maxY - Constants.topPadding
+        let screenFrame = screen.frame
+        let topY = screenFrame.maxY - Constants.topPadding
         var frame = NSRect(
-            x: visibleFrame.midX - size.width / 2,
+            x: screenFrame.midX - size.width / 2,
             y: topY - size.height,
             width: size.width,
             height: size.height
         )
-        frame.origin.x = min(max(frame.origin.x, visibleFrame.minX + 12), visibleFrame.maxX - frame.width - 12)
-        frame.origin.y = max(frame.origin.y, visibleFrame.minY + 12)
+        frame.origin.x = min(
+            max(frame.origin.x, screenFrame.minX + Constants.screenEdgePadding),
+            screenFrame.maxX - frame.width - Constants.screenEdgePadding
+        )
+        frame.origin.y = max(frame.origin.y, screenFrame.minY + Constants.screenEdgePadding)
 
         if animated {
             NSAnimationContext.runAnimationGroup { context in
