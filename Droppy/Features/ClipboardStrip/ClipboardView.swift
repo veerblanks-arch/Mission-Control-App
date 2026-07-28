@@ -453,6 +453,7 @@ private struct ClipboardItemRow: View {
             if !isSelecting {
                 ClipboardDragHandle(
                     writers: { manager.dragWriters(for: item) },
+                    preview: dragPreview,
                     onSuccessfulDrop: { manager.completeSuccessfulDrag() }
                 )
                 .frame(width: 28, height: 36)
@@ -525,10 +526,42 @@ private struct ClipboardItemRow: View {
             previewSymbol(fallback, color: color)
         }
     }
+
+    private var dragPreview: ClipboardDragPreview {
+        switch item.kind {
+        case .text:
+            ClipboardDragPreview(
+                title: item.title,
+                symbolName: "text.alignleft",
+                thumbnail: nil
+            )
+        case .file:
+            ClipboardDragPreview(
+                title: item.title,
+                symbolName: "doc",
+                thumbnail: manager.payload(for: item)?
+                    .fileReferences.first
+                    .map { NSWorkspace.shared.icon(forFile: $0.resolvedURL.path) }
+            )
+        case .image:
+            ClipboardDragPreview(
+                title: item.title,
+                symbolName: "photo",
+                thumbnail: manager.image(for: item)
+            )
+        case .screenshot:
+            ClipboardDragPreview(
+                title: item.title,
+                symbolName: "camera.viewfinder",
+                thumbnail: manager.image(for: item)
+            )
+        }
+    }
 }
 
 private struct ClipboardDragHandle: NSViewRepresentable {
     let writers: () -> [NSPasteboardWriting]
+    let preview: ClipboardDragPreview
     let onSuccessfulDrop: () -> Void
 
     func makeNSView(context: Context) -> ClipboardDragSourceView {
@@ -537,12 +570,115 @@ private struct ClipboardDragHandle: NSViewRepresentable {
 
     func updateNSView(_ view: ClipboardDragSourceView, context: Context) {
         view.writers = writers
+        view.preview = preview
         view.onSuccessfulDrop = onSuccessfulDrop
+    }
+}
+
+private struct ClipboardDragPreview {
+    let title: String
+    let symbolName: String
+    let thumbnail: NSImage?
+
+    var image: NSImage {
+        let imageSize = NSSize(width: 196, height: 52)
+        return NSImage(size: imageSize, flipped: false) { canvas in
+            let cardRect = canvas.insetBy(dx: 4, dy: 4)
+            let cardPath = NSBezierPath(
+                roundedRect: cardRect,
+                xRadius: 8,
+                yRadius: 8
+            )
+
+            let shadow = NSShadow()
+            shadow.shadowBlurRadius = 6
+            shadow.shadowOffset = NSSize(width: 0, height: -2)
+            shadow.shadowColor = NSColor.black.withAlphaComponent(0.24)
+            NSGraphicsContext.saveGraphicsState()
+            shadow.set()
+            NSColor.windowBackgroundColor.withAlphaComponent(0.96).setFill()
+            cardPath.fill()
+            NSGraphicsContext.restoreGraphicsState()
+
+            NSGraphicsContext.saveGraphicsState()
+            NSColor.separatorColor.withAlphaComponent(0.55).setStroke()
+            cardPath.lineWidth = 1
+            cardPath.stroke()
+            NSGraphicsContext.restoreGraphicsState()
+
+            let artworkRect = NSRect(
+                x: cardRect.minX + 8,
+                y: cardRect.minY + 6,
+                width: 32,
+                height: 32
+            )
+            drawArtwork(in: artworkRect)
+
+            let textRect = NSRect(
+                x: artworkRect.maxX + 9,
+                y: cardRect.minY + 13,
+                width: cardRect.maxX - artworkRect.maxX - 17,
+                height: 18
+            )
+            let paragraph = NSMutableParagraphStyle()
+            paragraph.lineBreakMode = .byTruncatingTail
+            (title as NSString).draw(
+                in: textRect,
+                withAttributes: [
+                    .font: NSFont.systemFont(ofSize: 12, weight: .semibold),
+                    .foregroundColor: NSColor.labelColor,
+                    .paragraphStyle: paragraph,
+                ]
+            )
+            return true
+        }
+    }
+
+    private func drawArtwork(in rect: NSRect) {
+        let clipPath = NSBezierPath(
+            roundedRect: rect,
+            xRadius: 6,
+            yRadius: 6
+        )
+        NSGraphicsContext.saveGraphicsState()
+        clipPath.addClip()
+
+        if let thumbnail {
+            thumbnail.draw(
+                in: rect,
+                from: .zero,
+                operation: .sourceOver,
+                fraction: 1,
+                respectFlipped: true,
+                hints: [.interpolation: NSImageInterpolation.high]
+            )
+        } else {
+            NSColor.controlAccentColor.withAlphaComponent(0.14).setFill()
+            rect.fill()
+            let symbol = NSImage(
+                systemSymbolName: symbolName,
+                accessibilityDescription: nil
+            )?.withSymbolConfiguration(
+                NSImage.SymbolConfiguration(pointSize: 15, weight: .semibold)
+            )
+            symbol?.isTemplate = true
+            let symbolRect = NSRect(
+                x: rect.midX - 8,
+                y: rect.midY - 8,
+                width: 16,
+                height: 16
+            )
+            NSColor.controlAccentColor.set()
+            symbol?.draw(in: symbolRect)
+        }
+
+        NSGraphicsContext.restoreGraphicsState()
     }
 }
 
 private final class ClipboardDragSourceView: NSView, NSDraggingSource {
     var writers: (() -> [NSPasteboardWriting])?
+    var preview: ClipboardDragPreview?
     var onSuccessfulDrop: (() -> Void)?
     private var didBeginDrag = false
 
@@ -574,27 +710,43 @@ private final class ClipboardDragSourceView: NSView, NSDraggingSource {
     }
 
     override func mouseDragged(with event: NSEvent) {
-        guard !didBeginDrag, let writers, !writers().isEmpty else {
+        guard
+            !didBeginDrag,
+            let writers,
+            let preview
+        else {
+            return
+        }
+        let pasteboardWriters = writers()
+        guard !pasteboardWriters.isEmpty else {
             return
         }
         didBeginDrag = true
 
-        let draggingItems = writers().map { writer -> NSDraggingItem in
+        let previewImage = preview.image
+        let previewSize = previewImage.size
+        let previewFrame = NSRect(
+            x: bounds.midX - previewSize.width / 2,
+            y: bounds.midY - previewSize.height / 2,
+            width: previewSize.width,
+            height: previewSize.height
+        )
+        let draggingItems = pasteboardWriters.enumerated().map { index, writer -> NSDraggingItem in
             let item = NSDraggingItem(pasteboardWriter: writer)
-            let frame = NSRect(
-                x: bounds.midX - 20,
-                y: bounds.midY - 20,
-                width: 40,
-                height: 40
+            let offset = CGFloat(min(index, 3)) * 3
+            item.setDraggingFrame(
+                previewFrame.offsetBy(dx: offset, dy: -offset),
+                contents: previewImage
             )
-            let image = NSImage(
-                systemSymbolName: "doc.on.clipboard",
-                accessibilityDescription: nil
-            ) ?? NSImage(size: frame.size)
-            item.setDraggingFrame(frame, contents: image)
             return item
         }
-        beginDraggingSession(with: draggingItems, event: event, source: self)
+        let session = beginDraggingSession(
+            with: draggingItems,
+            event: event,
+            source: self
+        )
+        session.animatesToStartingPositionsOnCancelOrFail = true
+        session.draggingFormation = draggingItems.count > 1 ? .stack : .none
     }
 
     func draggingSession(

@@ -1,4 +1,5 @@
 import AppKit
+import ApplicationServices
 
 struct PermissionsManager {
     var onboardingMessage: String {
@@ -25,4 +26,35 @@ struct PermissionsManager {
         )
     }
 
+}
+
+final class AccessibilityPasteAuthorizer {
+    private let isTrusted: () -> Bool
+    private let requestPermission: () -> Bool
+    private var hasRequestedPermission = false
+
+    init(
+        isTrusted: @escaping () -> Bool = { AXIsProcessTrusted() },
+        requestPermission: @escaping () -> Bool = {
+            let promptKey = kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String
+            return AXIsProcessTrustedWithOptions(
+                [promptKey: true] as CFDictionary
+            )
+        }
+    ) {
+        self.isTrusted = isTrusted
+        self.requestPermission = requestPermission
+    }
+
+    func canPostPasteEvent() -> Bool {
+        if isTrusted() {
+            return true
+        }
+
+        guard !hasRequestedPermission else {
+            return false
+        }
+        hasRequestedPermission = true
+        return requestPermission()
+    }
 }

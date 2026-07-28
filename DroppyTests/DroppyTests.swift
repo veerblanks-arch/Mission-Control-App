@@ -266,6 +266,36 @@ final class DroppyTests: XCTestCase {
         )
     }
 
+    func testAccessibilityAuthorizerChecksTrustWithoutPrompting() {
+        var requestCount = 0
+        let authorizer = AccessibilityPasteAuthorizer(
+            isTrusted: { true },
+            requestPermission: {
+                requestCount += 1
+                return false
+            }
+        )
+
+        XCTAssertTrue(authorizer.canPostPasteEvent())
+        XCTAssertTrue(authorizer.canPostPasteEvent())
+        XCTAssertEqual(requestCount, 0)
+    }
+
+    func testAccessibilityAuthorizerPromptsOnlyOncePerLaunch() {
+        var requestCount = 0
+        let authorizer = AccessibilityPasteAuthorizer(
+            isTrusted: { false },
+            requestPermission: {
+                requestCount += 1
+                return false
+            }
+        )
+
+        XCTAssertFalse(authorizer.canPostPasteEvent())
+        XCTAssertFalse(authorizer.canPostPasteEvent())
+        XCTAssertEqual(requestCount, 1)
+    }
+
     func testScreenshotMonitorFindsDocumentsScreenshotsFolder() throws {
         let fixture = try ClipboardTestFixture()
         let screenshotFolder = fixture.rootURL.appendingPathComponent(

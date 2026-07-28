@@ -1,5 +1,4 @@
 import AppKit
-import ApplicationServices
 import Combine
 import UniformTypeIdentifiers
 
@@ -24,6 +23,7 @@ final class ClipboardManagerFeature: ObservableObject {
     private let retentionPolicy: ClipboardRetentionPolicy
     private let screenshotMonitor: ScreenshotMonitor
     private let ocrService: ClipboardOCRService
+    private let accessibilityAuthorizer: AccessibilityPasteAuthorizer
     private var archive: ClipboardArchive
     private var timer: Timer?
     private var workspaceObserver: NSObjectProtocol?
@@ -38,12 +38,14 @@ final class ClipboardManagerFeature: ObservableObject {
         settings: Settings = .shared,
         retentionPolicy: ClipboardRetentionPolicy = ClipboardRetentionPolicy(),
         screenshotMonitor: ScreenshotMonitor = ScreenshotMonitor(),
-        ocrService: ClipboardOCRService = ClipboardOCRService()
+        ocrService: ClipboardOCRService = ClipboardOCRService(),
+        accessibilityAuthorizer: AccessibilityPasteAuthorizer = AccessibilityPasteAuthorizer()
     ) {
         self.settings = settings
         self.retentionPolicy = retentionPolicy
         self.screenshotMonitor = screenshotMonitor
         self.ocrService = ocrService
+        self.accessibilityAuthorizer = accessibilityAuthorizer
         isPaused = settings.clipboardCapturePaused
         excludedApps = settings.excludedClipboardApps
 
@@ -119,9 +121,7 @@ final class ClipboardManagerFeature: ObservableObject {
             return
         }
 
-        let promptKey = kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String
-        let options = [promptKey: true] as CFDictionary
-        guard AXIsProcessTrustedWithOptions(options) else {
+        guard accessibilityAuthorizer.canPostPasteEvent() else {
             showStatus("Copied. Allow Accessibility to paste automatically.")
             return
         }
