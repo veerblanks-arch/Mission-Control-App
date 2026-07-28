@@ -66,6 +66,13 @@ final class ScreenshotNotificationCoordinator {
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.64, execute: workItem)
     }
 
+    func dismiss() {
+        dismissalWorkItem?.cancel()
+        dismissalWorkItem = nil
+        panel.orderOut(nil)
+        panel.alphaValue = 1
+    }
+
     private func positionPanel() {
         let mouseLocation = NSEvent.mouseLocation
         let screen = NSScreen.screens.first { $0.frame.contains(mouseLocation) }

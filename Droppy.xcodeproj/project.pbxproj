@@ -29,6 +29,9 @@
 		10000000000000000000001D /* ClipboardOCRService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000020 /* ClipboardOCRService.swift */; };
 		10000000000000000000001E /* ClipboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000021 /* ClipboardView.swift */; };
 		10000000000000000000001F /* ScreenshotNotificationCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000022 /* ScreenshotNotificationCoordinator.swift */; };
+		100000000000000000000020 /* SnippetModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000023 /* SnippetModels.swift */; };
+		100000000000000000000021 /* SnippetEditor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000024 /* SnippetEditor.swift */; };
+		100000000000000000000022 /* SnippetCaptureCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000025 /* SnippetCaptureCoordinator.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -67,6 +70,9 @@
 		200000000000000000000020 /* ClipboardOCRService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClipboardOCRService.swift; sourceTree = "<group>"; };
 		200000000000000000000021 /* ClipboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClipboardView.swift; sourceTree = "<group>"; };
 		200000000000000000000022 /* ScreenshotNotificationCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScreenshotNotificationCoordinator.swift; sourceTree = "<group>"; };
+		200000000000000000000023 /* SnippetModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SnippetModels.swift; sourceTree = "<group>"; };
+		200000000000000000000024 /* SnippetEditor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SnippetEditor.swift; sourceTree = "<group>"; };
+		200000000000000000000025 /* SnippetCaptureCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SnippetCaptureCoordinator.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -137,6 +143,7 @@
 				700000000000000000000008 /* ClipboardStrip */,
 				700000000000000000000014 /* DropZone */,
 				700000000000000000000015 /* Shelf */,
+				700000000000000000000016 /* Snippet */,
 			);
 			path = Features;
 			sourceTree = "<group>";
@@ -171,6 +178,16 @@
 				200000000000000000000019 /* ShelfFeature.swift */,
 			);
 			path = Shelf;
+			sourceTree = "<group>";
+		};
+		700000000000000000000016 /* Snippet */ = {
+			isa = PBXGroup;
+			children = (
+				200000000000000000000023 /* SnippetModels.swift */,
+				200000000000000000000024 /* SnippetEditor.swift */,
+				200000000000000000000025 /* SnippetCaptureCoordinator.swift */,
+			);
+			path = Snippet;
 			sourceTree = "<group>";
 		};
 		700000000000000000000010 /* Storage */ = {
@@ -306,6 +323,9 @@
 				10000000000000000000001F /* ScreenshotNotificationCoordinator.swift in Sources */,
 				100000000000000000000016 /* ShelfFeature.swift in Sources */,
 				100000000000000000000017 /* DropZoneCoordinator.swift in Sources */,
+				100000000000000000000020 /* SnippetModels.swift in Sources */,
+				100000000000000000000021 /* SnippetEditor.swift in Sources */,
+				100000000000000000000022 /* SnippetCaptureCoordinator.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

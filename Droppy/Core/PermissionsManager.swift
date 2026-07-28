@@ -1,7 +1,10 @@
 import AppKit
 import ApplicationServices
+import CoreGraphics
 
-struct PermissionsManager {
+final class PermissionsManager {
+    private var hasRequestedScreenCaptureAccess = false
+
     var onboardingMessage: String {
         """
         Droppy now lives in the menu bar. Phase 0 does not need special permissions, but later clipboard, drag monitoring, and media features may ask for local-only macOS permissions here.
@@ -26,6 +29,30 @@ struct PermissionsManager {
         )
     }
 
+    func requestScreenCaptureAccessIfNeeded() -> Bool {
+        if CGPreflightScreenCaptureAccess() {
+            return true
+        }
+
+        guard !hasRequestedScreenCaptureAccess else {
+            return false
+        }
+        hasRequestedScreenCaptureAccess = true
+        return CGRequestScreenCaptureAccess()
+    }
+
+    func openScreenRecordingSettings() {
+        let candidates = [
+            "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture",
+            "x-apple.systempreferences:com.apple.preference.security?Privacy",
+        ]
+        for candidate in candidates {
+            if let url = URL(string: candidate), NSWorkspace.shared.open(url) {
+                return
+            }
+        }
+        openPrivacySettings()
+    }
 }
 
 final class AccessibilityPasteAuthorizer {

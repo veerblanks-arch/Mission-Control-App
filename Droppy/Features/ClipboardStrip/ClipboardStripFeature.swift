@@ -32,6 +32,7 @@ final class ClipboardManagerFeature: ObservableObject {
     private var undoItems: [ClipboardItem] = []
     private var undoCleanupWorkItem: DispatchWorkItem?
     private var statusClearWorkItem: DispatchWorkItem?
+    private var ignoredScreenshotPaths = Set<String>()
 
     init(
         repository: ClipboardRepository? = nil,
@@ -344,12 +345,44 @@ final class ClipboardManagerFeature: ObservableObject {
         }
     }
 
+    @discardableResult
+    func ingestSnippet(at url: URL, date: Date = Date()) -> ClipboardItem? {
+        if isPaused {
+            markScreenshotCheckpoint(at: date)
+        } else {
+            let path = url.standardizedFileURL.path
+            ignoredScreenshotPaths.insert(path)
+            captureNewScreenshots(through: date)
+            ignoredScreenshotPaths.remove(path)
+        }
+
+        guard
+            let capture = ClipboardCaptureReader.screenshot(
+                url: url,
+                sourceAppName: "Droppy Snippet",
+                sourceBundleIdentifier: Bundle.main.bundleIdentifier
+            ),
+            let image = NSImage(contentsOf: url),
+            let item = insert(capture, at: date, schedulesOCR: true)
+        else {
+            return nil
+        }
+
+        let pasteboard = NSPasteboard.general
+        pasteboard.clearContents()
+        pasteboard.writeObjects([image])
+        lastChangeCount = pasteboard.changeCount
+        onScreenshotCaptured?(item, image)
+        return item
+    }
+
     private func poll() {
         let now = Date()
         captureClipboardChangeIfNeeded()
 
         if isPaused {
             markScreenshotCheckpoint(at: now)
+            ignoredScreenshotPaths.removeAll()
             return
         }
 
@@ -399,6 +432,9 @@ final class ClipboardManagerFeature: ObservableObject {
         markScreenshotCheckpoint(at: now)
 
         for url in urls {
+            if ignoredScreenshotPaths.remove(url.standardizedFileURL.path) != nil {
+                continue
+            }
             guard
                 let capture = ClipboardCaptureReader.screenshot(url: url),
                 let item = insert(capture, at: Date(), schedulesOCR: true),

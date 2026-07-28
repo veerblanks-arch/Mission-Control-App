@@ -346,6 +346,214 @@ final class DroppyTests: XCTestCase {
         XCTAssertEqual(captures.first?.payload.plainText, "legacy text")
     }
 
+    func testSnippetCaptureCommandsMatchEachMode() {
+        let destination = URL(fileURLWithPath: "/tmp/snippet.png")
+
+        XCTAssertEqual(
+            SnippetCaptureCommand.arguments(
+                for: .region,
+                displayNumber: 2,
+                destinationURL: destination
+            ),
+            ["-i", "-s", "-x", "/tmp/snippet.png"]
+        )
+        XCTAssertEqual(
+            SnippetCaptureCommand.arguments(
+                for: .window,
+                displayNumber: 2,
+                destinationURL: destination
+            ),
+            ["-i", "-w", "-x", "/tmp/snippet.png"]
+        )
+        XCTAssertEqual(
+            SnippetCaptureCommand.arguments(
+                for: .fullScreen,
+                displayNumber: 2,
+                destinationURL: destination
+            ),
+            ["-x", "-D", "2", "/tmp/snippet.png"]
+        )
+    }
+
+    func testSnippetStorageUsesNestedScreenshotFolderAndAvoidsCollisions() throws {
+        let fixture = try ClipboardTestFixture()
+        let screenshotFolder = fixture.rootURL.appendingPathComponent(
+            "Screenshots",
+            isDirectory: true
+        )
+        try FileManager.default.createDirectory(
+            at: screenshotFolder,
+            withIntermediateDirectories: true
+        )
+        let storage = SnippetStorage(
+            screenshotMonitor: ScreenshotMonitor(configuredRootURL: fixture.rootURL)
+        )
+        let image = try testCGImage(width: 20, height: 12)
+        let date = Date(timeIntervalSince1970: 1_700_000_000)
+
+        let first = try storage.save(image, at: date)
+        let second = try storage.save(image, at: date)
+
+        XCTAssertEqual(first.deletingLastPathComponent(), screenshotFolder)
+        XCTAssertEqual(second.deletingLastPathComponent(), screenshotFolder)
+        XCTAssertNotEqual(first, second)
+        XCTAssertEqual(second.deletingPathExtension().lastPathComponent.suffix(2), " 2")
+        XCTAssertTrue(FileManager.default.fileExists(atPath: first.path))
+        XCTAssertTrue(FileManager.default.fileExists(atPath: second.path))
+    }
+
+    @MainActor
+    func testSnippetDocumentUndoRedoAndCropRendering() throws {
+        let document = SnippetDocument(
+            sourceImage: try testCGImage(width: 100, height: 80)
+        )
+        document.selectedTool = .rectangle
+        document.beginGesture(at: CGPoint(x: 0.1, y: 0.1))
+        document.continueGesture(to: CGPoint(x: 0.5, y: 0.5))
+        document.endGesture()
+
+        XCTAssertEqual(document.annotations.count, 1)
+        XCTAssertTrue(document.canUndo)
+        document.undo()
+        XCTAssertTrue(document.annotations.isEmpty)
+        XCTAssertTrue(document.canRedo)
+        document.redo()
+        XCTAssertEqual(document.annotations.count, 1)
+
+        document.selectedTool = .crop
+        document.beginGesture(at: CGPoint(x: 0.25, y: 0.25))
+        document.continueGesture(to: CGPoint(x: 0.75, y: 0.75))
+        document.endGesture()
+
+        let output = try XCTUnwrap(document.renderedImage())
+        XCTAssertEqual(output.width, 50)
+        XCTAssertEqual(output.height, 40)
+    }
+
+    @MainActor
+    func testSnippetLongStrokeCommitsAsOneUndoStep() throws {
+        let document = SnippetDocument(
+            sourceImage: try testCGImage(width: 200, height: 120)
+        )
+        document.selectedTool = .pen
+        document.beginGesture(at: CGPoint(x: 0.05, y: 0.5))
+        for step in 1...100 {
+            document.continueGesture(
+                to: CGPoint(x: 0.05 + CGFloat(step) * 0.008, y: 0.5)
+            )
+        }
+        document.endGesture()
+
+        XCTAssertEqual(document.annotations.count, 1)
+        document.undo()
+        XCTAssertTrue(document.annotations.isEmpty)
+        XCTAssertFalse(document.canUndo)
+    }
+
+    func testSnippetRedactionIsFullyOpaque() throws {
+        let output = try XCTUnwrap(
+            SnippetRenderer.render(
+                sourceImage: testCGImage(width: 20, height: 20),
+                annotations: [
+                    .redact(rect: CGRect(x: 0.2, y: 0.2, width: 0.6, height: 0.6))
+                ],
+                cropRect: nil
+            )
+        )
+        guard
+            let data = output.dataProvider?.data,
+            let bytes = CFDataGetBytePtr(data)
+        else {
+            return XCTFail("Missing rendered pixel data")
+        }
+        let bytesPerRow = output.bytesPerRow
+        let offset = 10 * bytesPerRow + 10 * 4
+
+        XCTAssertEqual(bytes[offset], 0)
+        XCTAssertEqual(bytes[offset + 1], 0)
+        XCTAssertEqual(bytes[offset + 2], 0)
+        XCTAssertEqual(bytes[offset + 3], 255)
+    }
+
+    @MainActor
+    func testSnippetIngestCreatesOneScreenshotClipboardItem() throws {
+        let fixture = try ClipboardTestFixture()
+        let repository = try fixture.repository()
+        let manager = ClipboardManagerFeature(
+            repository: repository,
+            screenshotMonitor: ScreenshotMonitor(configuredRootURL: fixture.rootURL)
+        )
+        let screenshotURL = fixture.rootURL.appendingPathComponent("Snippet.png")
+        try testPNGData().write(to: screenshotURL)
+        var notificationCount = 0
+        manager.onScreenshotCaptured = { _, _ in
+            notificationCount += 1
+        }
+
+        let item = try XCTUnwrap(manager.ingestSnippet(at: screenshotURL))
+
+        XCTAssertEqual(manager.items.count, 1)
+        XCTAssertEqual(item.kind, .screenshot)
+        XCTAssertEqual(item.sourceAppName, "Droppy Snippet")
+        XCTAssertEqual(notificationCount, 1)
+        XCTAssertEqual(manager.payload(for: item)?.screenshotOriginalPath, screenshotURL.path)
+    }
+
+    @MainActor
+    func testSnippetIngestPreservesUnrelatedScreenshotBeforeCheckpoint() throws {
+        let fixture = try ClipboardTestFixture()
+        let screenshotFolder = fixture.rootURL.appendingPathComponent(
+            "Screenshots",
+            isDirectory: true
+        )
+        try FileManager.default.createDirectory(
+            at: screenshotFolder,
+            withIntermediateDirectories: true
+        )
+        let suiteName = "DroppySnippetTests-\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+        let manager = ClipboardManagerFeature(
+            repository: try fixture.repository(),
+            settings: Settings(defaults: defaults),
+            screenshotMonitor: ScreenshotMonitor(configuredRootURL: fixture.rootURL)
+        )
+        manager.start()
+        defer { manager.stop() }
+
+        let firstDate = Date().addingTimeInterval(0.1)
+        let unrelatedURL = screenshotFolder.appendingPathComponent("Unrelated.png")
+        let snippetURL = screenshotFolder.appendingPathComponent("Snippet.png")
+        try testPNGData(width: 4, height: 4).write(to: unrelatedURL)
+        try testPNGData(width: 5, height: 5).write(to: snippetURL)
+        try FileManager.default.setAttributes(
+            [.modificationDate: firstDate],
+            ofItemAtPath: unrelatedURL.path
+        )
+        try FileManager.default.setAttributes(
+            [.modificationDate: firstDate.addingTimeInterval(0.1)],
+            ofItemAtPath: snippetURL.path
+        )
+        var notificationCount = 0
+        manager.onScreenshotCaptured = { _, _ in
+            notificationCount += 1
+        }
+
+        XCTAssertNotNil(
+            manager.ingestSnippet(
+                at: snippetURL,
+                date: firstDate.addingTimeInterval(0.2)
+            )
+        )
+
+        XCTAssertEqual(manager.items.count, 2)
+        XCTAssertEqual(
+            Set(manager.items.map(\.title)),
+            Set(["Unrelated.png", "Snippet.png"])
+        )
+        XCTAssertEqual(notificationCount, 2)
+    }
+
     private func clipboardItem(
         capturedAt: Date,
         pinnedAt: Date? = nil,
@@ -369,13 +577,32 @@ final class DroppyTests: XCTestCase {
         )
     }
 
-    private func testPNGData() throws -> Data {
-        let image = NSImage(size: NSSize(width: 4, height: 4))
+    private func testPNGData(width: CGFloat = 4, height: CGFloat = 4) throws -> Data {
+        let image = NSImage(size: NSSize(width: width, height: height))
         image.lockFocus()
         NSColor.systemBlue.setFill()
-        NSRect(x: 0, y: 0, width: 4, height: 4).fill()
+        NSRect(x: 0, y: 0, width: width, height: height).fill()
         image.unlockFocus()
         return try XCTUnwrap(image.pngData)
+    }
+
+    private func testCGImage(width: Int, height: Int) throws -> CGImage {
+        guard
+            let context = CGContext(
+                data: nil,
+                width: width,
+                height: height,
+                bitsPerComponent: 8,
+                bytesPerRow: 0,
+                space: CGColorSpaceCreateDeviceRGB(),
+                bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+            )
+        else {
+            throw NSError(domain: "DroppyTests", code: 1)
+        }
+        context.setFillColor(NSColor.systemBlue.cgColor)
+        context.fill(CGRect(x: 0, y: 0, width: width, height: height))
+        return try XCTUnwrap(context.makeImage())
     }
 }
 

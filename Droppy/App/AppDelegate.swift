@@ -20,6 +20,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let clipboardManager = ClipboardManagerFeature.shared
     private let shelf = ShelfFeature.shared
     private lazy var dropZoneCoordinator = DropZoneCoordinator(shelf: shelf)
+    private lazy var snippetCaptureCoordinator = SnippetCaptureCoordinator(
+        clipboardManager: clipboardManager,
+        permissionsManager: permissionsManager
+    )
     private lazy var screenshotNotificationCoordinator = ScreenshotNotificationCoordinator {
         [weak self] itemID in
         self?.statusItemController.showClipboard(focusedItemID: itemID)
@@ -45,6 +49,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         clipboardManager.onScreenshotCaptured = { [weak self] item, image in
             self?.screenshotNotificationCoordinator.show(item: item, image: image)
         }
+        overlayPanelController.onCaptureSnippet = { [weak self] mode in
+            guard let self else { return }
+            self.screenshotNotificationCoordinator.dismiss()
+            self.overlayPanelController.dismissForCapture { [weak self] in
+                self?.snippetCaptureCoordinator.capture(mode)
+            }
+        }
         clipboardManager.start()
         statusItemController.start()
         dropZoneCoordinator.start()
@@ -58,6 +69,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if CommandLine.arguments.contains("--show-drop-zone") {
             DispatchQueue.main.async { [weak self] in
                 self?.dropZoneCoordinator.showForDebug()
+            }
+        }
+        if CommandLine.arguments.contains("--show-snippet-editor") {
+            DispatchQueue.main.async { [weak self] in
+                self?.snippetCaptureCoordinator.showEditorForDebug()
             }
         }
 #endif

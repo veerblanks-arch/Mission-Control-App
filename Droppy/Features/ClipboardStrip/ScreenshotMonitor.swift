@@ -30,6 +30,10 @@ struct ScreenshotMonitor {
         return folders
     }
 
+    func preferredSaveFolder() -> URL {
+        monitoredFolders().last ?? configuredScreenshotRoot()
+    }
+
     func screenshots(createdAfter date: Date, through endDate: Date) -> [URL] {
         var candidates: [(url: URL, date: Date)] = []
 

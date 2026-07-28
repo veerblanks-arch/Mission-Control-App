@@ -101,7 +101,11 @@ enum ClipboardCaptureReader {
         return nil
     }
 
-    static func screenshot(url: URL) -> ClipboardCapture? {
+    static func screenshot(
+        url: URL,
+        sourceAppName: String = "Screenshot",
+        sourceBundleIdentifier: String? = "com.apple.screencaptureui"
+    ) -> ClipboardCapture? {
         guard
             let image = NSImage(contentsOf: url),
             let pngData = image.pngData
@@ -113,8 +117,8 @@ enum ClipboardCaptureReader {
             kind: .screenshot,
             title: url.lastPathComponent,
             subtitle: "Screenshot - \(Int(image.size.width)) x \(Int(image.size.height))",
-            sourceAppName: "Screenshot",
-            sourceBundleIdentifier: "com.apple.screencaptureui",
+            sourceAppName: sourceAppName,
+            sourceBundleIdentifier: sourceBundleIdentifier,
             payload: .image(
                 data: pngData,
                 typeIdentifier: UTType.png.identifier,

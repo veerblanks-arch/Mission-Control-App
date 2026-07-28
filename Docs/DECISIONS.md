@@ -86,6 +86,27 @@ Date: 2026-07-28
 - Establish a cohesive app-wide color theme while preserving system contrast
   and Reduced Motion behavior.
 
+## Snippet
+
+- Keep Snippet as a header action rather than a navigation-rail feature.
+- Use the native macOS capture service for region, window, and active-display
+  selection. Captures remain temporary until the editor finishes.
+- Keep region capture as the primary button and expose all three modes in its
+  adjacent menu.
+- Provide pen, highlighter, arrow, rectangle, text, blur, opaque redaction,
+  crop, undo/redo, color, and thickness controls.
+- Keep freehand strokes mutable while drawing and commit one history action on
+  mouse-up.
+- Save only the flattened annotated PNG. Prefer the configured macOS screenshot
+  folder's existing immediate `Screenshots` child.
+- Copy and ingest the result through Clipboard's explicit generated-screenshot
+  path so it is encrypted, OCR-indexed, and notified exactly once.
+- Suppress only the generated snippet path from passive screenshot discovery;
+  never advance the global screenshot checkpoint to hide a duplicate.
+- Request Screen Recording only after an explicit capture action. When access
+  is unavailable, offer the correct System Settings destination and require a
+  relaunch after the permission changes.
+
 ## Workflow
 
 - Complete one phase at a time.
@@ -98,5 +119,7 @@ Date: 2026-07-28
 - Phase 1: accepted and committed.
 - Phase 2: implemented and tested in code; pending the target-Mac drag,
   multi-display, Space, and full-screen acceptance check.
-- Phase 3: implemented and verified in code and on the target Mac; awaiting
-  user acceptance before Phase 4.
+- Phase 3: accepted and committed.
+- Phase 4: implemented, code-tested, and visually verified on the target Mac.
+  A real region/window/full-screen capture remains an acceptance check after
+  Screen Recording is granted to the final app copy.

@@ -101,6 +101,16 @@ final class OverlayPanelController: NSWindowController, NSWindowDelegate {
         show(relativeTo: statusButton)
     }
 
+    var onCaptureSnippet: ((SnippetCaptureMode) -> Void)? {
+        get { model.onCaptureSnippet }
+        set { model.onCaptureSnippet = newValue }
+    }
+
+    func dismissForCapture(completion: @escaping () -> Void) {
+        closePanel()
+        DispatchQueue.main.async(execute: completion)
+    }
+
     func windowDidResize(_ notification: Notification) {
         guard let size = window?.frame.size else {
             return
@@ -210,4 +220,5 @@ final class OverlayPanelController: NSWindowController, NSWindowDelegate {
 
 final class OverlayPanelModel: ObservableObject {
     @Published var selectedFeature: OverlayFeature = .clipboard
+    var onCaptureSnippet: ((SnippetCaptureMode) -> Void)?
 }

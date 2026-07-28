@@ -86,6 +86,36 @@ struct OverlayRootView: View {
             }
 
             Spacer()
+
+            HStack(spacing: 0) {
+                Button {
+                    model.onCaptureSnippet?(.region)
+                } label: {
+                    Image(systemName: "camera.viewfinder")
+                        .font(.system(size: 14, weight: .semibold))
+                        .frame(width: 30, height: 30)
+                }
+                .buttonStyle(.plain)
+                .help("Capture Region")
+
+                Menu {
+                    ForEach(SnippetCaptureMode.allCases) { mode in
+                        Button {
+                            model.onCaptureSnippet?(mode)
+                        } label: {
+                            Label(mode.title, systemImage: mode.symbolName)
+                        }
+                    }
+                } label: {
+                    Image(systemName: "chevron.down")
+                        .font(.system(size: 10, weight: .semibold))
+                        .frame(width: 20, height: 30)
+                }
+                .menuStyle(.borderlessButton)
+                .menuIndicator(.hidden)
+                .fixedSize()
+                .help("Snippet capture options")
+            }
         }
         .padding(.horizontal, 18)
         .padding(.top, 18)
