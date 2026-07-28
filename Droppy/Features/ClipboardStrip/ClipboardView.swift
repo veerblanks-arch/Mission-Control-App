@@ -530,31 +530,13 @@ private struct ClipboardItemRow: View {
     private var dragPreview: ClipboardDragPreview {
         switch item.kind {
         case .text:
-            ClipboardDragPreview(
-                title: item.title,
-                symbolName: "text.alignleft",
-                thumbnail: nil
-            )
+            ClipboardDragPreview(label: "text")
         case .file:
-            ClipboardDragPreview(
-                title: item.title,
-                symbolName: "doc",
-                thumbnail: manager.payload(for: item)?
-                    .fileReferences.first
-                    .map { NSWorkspace.shared.icon(forFile: $0.resolvedURL.path) }
-            )
+            ClipboardDragPreview(label: "file")
         case .image:
-            ClipboardDragPreview(
-                title: item.title,
-                symbolName: "photo",
-                thumbnail: manager.image(for: item)
-            )
+            ClipboardDragPreview(label: "image")
         case .screenshot:
-            ClipboardDragPreview(
-                title: item.title,
-                symbolName: "camera.viewfinder",
-                thumbnail: manager.image(for: item)
-            )
+            ClipboardDragPreview(label: "screenshot")
         }
     }
 }
@@ -576,103 +558,45 @@ private struct ClipboardDragHandle: NSViewRepresentable {
 }
 
 private struct ClipboardDragPreview {
-    let title: String
-    let symbolName: String
-    let thumbnail: NSImage?
+    let label: String
 
     var image: NSImage {
-        let imageSize = NSSize(width: 196, height: 52)
+        let attributes: [NSAttributedString.Key: Any] = [
+            .font: NSFont.systemFont(ofSize: 11, weight: .semibold),
+            .foregroundColor: NSColor.labelColor,
+        ]
+        let textSize = (label as NSString).size(withAttributes: attributes)
+        let imageSize = NSSize(
+            width: ceil(textSize.width) + 18,
+            height: 24
+        )
+
         return NSImage(size: imageSize, flipped: false) { canvas in
-            let cardRect = canvas.insetBy(dx: 4, dy: 4)
-            let cardPath = NSBezierPath(
-                roundedRect: cardRect,
-                xRadius: 8,
-                yRadius: 8
+            let badgeRect = canvas.insetBy(dx: 0.5, dy: 0.5)
+            let badgePath = NSBezierPath(
+                roundedRect: badgeRect,
+                xRadius: 6,
+                yRadius: 6
             )
 
-            let shadow = NSShadow()
-            shadow.shadowBlurRadius = 6
-            shadow.shadowOffset = NSSize(width: 0, height: -2)
-            shadow.shadowColor = NSColor.black.withAlphaComponent(0.24)
-            NSGraphicsContext.saveGraphicsState()
-            shadow.set()
-            NSColor.windowBackgroundColor.withAlphaComponent(0.96).setFill()
-            cardPath.fill()
-            NSGraphicsContext.restoreGraphicsState()
-
-            NSGraphicsContext.saveGraphicsState()
-            NSColor.separatorColor.withAlphaComponent(0.55).setStroke()
-            cardPath.lineWidth = 1
-            cardPath.stroke()
-            NSGraphicsContext.restoreGraphicsState()
-
-            let artworkRect = NSRect(
-                x: cardRect.minX + 8,
-                y: cardRect.minY + 6,
-                width: 32,
-                height: 32
-            )
-            drawArtwork(in: artworkRect)
+            NSColor.controlBackgroundColor.withAlphaComponent(0.96).setFill()
+            badgePath.fill()
+            NSColor.separatorColor.withAlphaComponent(0.65).setStroke()
+            badgePath.lineWidth = 1
+            badgePath.stroke()
 
             let textRect = NSRect(
-                x: artworkRect.maxX + 9,
-                y: cardRect.minY + 13,
-                width: cardRect.maxX - artworkRect.maxX - 17,
-                height: 18
+                x: (canvas.width - textSize.width) / 2,
+                y: (canvas.height - textSize.height) / 2,
+                width: textSize.width,
+                height: textSize.height
             )
-            let paragraph = NSMutableParagraphStyle()
-            paragraph.lineBreakMode = .byTruncatingTail
-            (title as NSString).draw(
+            (label as NSString).draw(
                 in: textRect,
-                withAttributes: [
-                    .font: NSFont.systemFont(ofSize: 12, weight: .semibold),
-                    .foregroundColor: NSColor.labelColor,
-                    .paragraphStyle: paragraph,
-                ]
+                withAttributes: attributes
             )
             return true
         }
-    }
-
-    private func drawArtwork(in rect: NSRect) {
-        let clipPath = NSBezierPath(
-            roundedRect: rect,
-            xRadius: 6,
-            yRadius: 6
-        )
-        NSGraphicsContext.saveGraphicsState()
-        clipPath.addClip()
-
-        if let thumbnail {
-            thumbnail.draw(
-                in: rect,
-                from: .zero,
-                operation: .sourceOver,
-                fraction: 1,
-                respectFlipped: true,
-                hints: [.interpolation: NSImageInterpolation.high]
-            )
-        } else {
-            NSColor.controlAccentColor.withAlphaComponent(0.14).setFill()
-            rect.fill()
-            let symbol = NSImage(
-                systemSymbolName: symbolName,
-                accessibilityDescription: nil
-            )?.withSymbolConfiguration(
-                NSImage.SymbolConfiguration(pointSize: 15, weight: .semibold)
-            )
-            symbol?.isTemplate = true
-            let symbolRect = NSRect(
-                x: rect.midX - 8,
-                y: rect.midY - 8,
-                width: 16,
-                height: 16
-            )
-            NSColor.controlAccentColor.set()
-            symbol?.draw(in: symbolRect)
-        }
-
-        NSGraphicsContext.restoreGraphicsState()
     }
 }
 
