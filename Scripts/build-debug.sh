@@ -27,4 +27,9 @@ ditto "$product" "$staging_dir/Droppy.app"
 rm -rf "$output"
 mv "$staging_dir/Droppy.app" "$output"
 
+launch_services="/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister"
+"$launch_services" -u "$product" >/dev/null 2>&1 || true
+rm -rf "$product"
+"$launch_services" -f -R -trusted "$output"
+
 echo "$output"
