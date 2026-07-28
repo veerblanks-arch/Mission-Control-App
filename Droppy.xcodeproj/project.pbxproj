@@ -7,24 +7,17 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		100000000000000000000001 /* TouchBarApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000001 /* TouchBarApp.swift */; };
+		100000000000000000000001 /* DroppyApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000001 /* DroppyApp.swift */; };
 		100000000000000000000002 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000002 /* AppDelegate.swift */; };
-		100000000000000000000003 /* MainTouchBarController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000003 /* MainTouchBarController.swift */; };
 		100000000000000000000004 /* OnboardingWindowController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000004 /* OnboardingWindowController.swift */; };
 		100000000000000000000006 /* PermissionsManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000006 /* PermissionsManager.swift */; };
-		100000000000000000000007 /* TouchBarProfileManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000007 /* TouchBarProfileManager.swift */; };
 		100000000000000000000008 /* Settings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000008 /* Settings.swift */; };
-		100000000000000000000009 /* VolumeBrightnessFeature.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000009 /* VolumeBrightnessFeature.swift */; };
-		10000000000000000000000A /* MediaPlayerFeature.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20000000000000000000000A /* MediaPlayerFeature.swift */; };
 		10000000000000000000000B /* ClipboardStripFeature.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20000000000000000000000B /* ClipboardStripFeature.swift */; };
-		10000000000000000000000C /* FileShelfFeature.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20000000000000000000000C /* FileShelfFeature.swift */; };
-		10000000000000000000000D /* AppSwitcherProfilesFeature.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20000000000000000000000D /* AppSwitcherProfilesFeature.swift */; };
-		10000000000000000000000E /* SystemStatsFeature.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20000000000000000000000E /* SystemStatsFeature.swift */; };
-		10000000000000000000000F /* StudyTimerFeature.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20000000000000000000000F /* StudyTimerFeature.swift */; };
 		100000000000000000000010 /* DroppyTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000010 /* DroppyTests.swift */; };
 		100000000000000000000011 /* StatusItemController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000014 /* StatusItemController.swift */; };
 		100000000000000000000012 /* OverlayPanelController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000015 /* OverlayPanelController.swift */; };
 		100000000000000000000013 /* OverlayRootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000016 /* OverlayRootView.swift */; };
+		100000000000000000000014 /* PanelGeometry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000017 /* PanelGeometry.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -38,20 +31,12 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
-		200000000000000000000001 /* TouchBarApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TouchBarApp.swift; sourceTree = "<group>"; };
+		200000000000000000000001 /* DroppyApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DroppyApp.swift; sourceTree = "<group>"; };
 		200000000000000000000002 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
-		200000000000000000000003 /* MainTouchBarController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainTouchBarController.swift; sourceTree = "<group>"; };
 		200000000000000000000004 /* OnboardingWindowController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingWindowController.swift; sourceTree = "<group>"; };
 		200000000000000000000006 /* PermissionsManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PermissionsManager.swift; sourceTree = "<group>"; };
-		200000000000000000000007 /* TouchBarProfileManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TouchBarProfileManager.swift; sourceTree = "<group>"; };
 		200000000000000000000008 /* Settings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Settings.swift; sourceTree = "<group>"; };
-		200000000000000000000009 /* VolumeBrightnessFeature.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VolumeBrightnessFeature.swift; sourceTree = "<group>"; };
-		20000000000000000000000A /* MediaPlayerFeature.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MediaPlayerFeature.swift; sourceTree = "<group>"; };
 		20000000000000000000000B /* ClipboardStripFeature.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClipboardStripFeature.swift; sourceTree = "<group>"; };
-		20000000000000000000000C /* FileShelfFeature.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileShelfFeature.swift; sourceTree = "<group>"; };
-		20000000000000000000000D /* AppSwitcherProfilesFeature.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppSwitcherProfilesFeature.swift; sourceTree = "<group>"; };
-		20000000000000000000000E /* SystemStatsFeature.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemStatsFeature.swift; sourceTree = "<group>"; };
-		20000000000000000000000F /* StudyTimerFeature.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StudyTimerFeature.swift; sourceTree = "<group>"; };
 		200000000000000000000010 /* DroppyTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DroppyTests.swift; sourceTree = "<group>"; };
 		200000000000000000000011 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		200000000000000000000012 /* Droppy.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Droppy.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -59,6 +44,7 @@
 		200000000000000000000014 /* StatusItemController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatusItemController.swift; sourceTree = "<group>"; };
 		200000000000000000000015 /* OverlayPanelController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OverlayPanelController.swift; sourceTree = "<group>"; };
 		200000000000000000000016 /* OverlayRootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OverlayRootView.swift; sourceTree = "<group>"; };
+		200000000000000000000017 /* PanelGeometry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PanelGeometry.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -103,11 +89,10 @@
 		700000000000000000000003 /* App */ = {
 			isa = PBXGroup;
 			children = (
-				200000000000000000000001 /* TouchBarApp.swift */,
+				200000000000000000000001 /* DroppyApp.swift */,
 				200000000000000000000002 /* AppDelegate.swift */,
 				200000000000000000000015 /* OverlayPanelController.swift */,
 				200000000000000000000016 /* OverlayRootView.swift */,
-				200000000000000000000003 /* MainTouchBarController.swift */,
 				200000000000000000000004 /* OnboardingWindowController.swift */,
 			);
 			path = App;
@@ -118,7 +103,7 @@
 			children = (
 				200000000000000000000014 /* StatusItemController.swift */,
 				200000000000000000000006 /* PermissionsManager.swift */,
-				200000000000000000000007 /* TouchBarProfileManager.swift */,
+				200000000000000000000017 /* PanelGeometry.swift */,
 			);
 			path = Core;
 			sourceTree = "<group>";
@@ -126,31 +111,9 @@
 		700000000000000000000005 /* Features */ = {
 			isa = PBXGroup;
 			children = (
-				700000000000000000000006 /* VolumeBrightness */,
-				700000000000000000000007 /* MediaPlayer */,
 				700000000000000000000008 /* ClipboardStrip */,
-				700000000000000000000009 /* FileShelf */,
-				700000000000000000000014 /* AppSwitcherProfiles */,
-				700000000000000000000015 /* SystemStats */,
-				700000000000000000000016 /* StudyTimer */,
 			);
 			path = Features;
-			sourceTree = "<group>";
-		};
-		700000000000000000000006 /* VolumeBrightness */ = {
-			isa = PBXGroup;
-			children = (
-				200000000000000000000009 /* VolumeBrightnessFeature.swift */,
-			);
-			path = VolumeBrightness;
-			sourceTree = "<group>";
-		};
-		700000000000000000000007 /* MediaPlayer */ = {
-			isa = PBXGroup;
-			children = (
-				20000000000000000000000A /* MediaPlayerFeature.swift */,
-			);
-			path = MediaPlayer;
 			sourceTree = "<group>";
 		};
 		700000000000000000000008 /* ClipboardStrip */ = {
@@ -159,14 +122,6 @@
 				20000000000000000000000B /* ClipboardStripFeature.swift */,
 			);
 			path = ClipboardStrip;
-			sourceTree = "<group>";
-		};
-		700000000000000000000009 /* FileShelf */ = {
-			isa = PBXGroup;
-			children = (
-				20000000000000000000000C /* FileShelfFeature.swift */,
-			);
-			path = FileShelf;
 			sourceTree = "<group>";
 		};
 		700000000000000000000010 /* Storage */ = {
@@ -200,30 +155,6 @@
 				200000000000000000000013 /* DroppyTests.xctest */,
 			);
 			name = Products;
-			sourceTree = "<group>";
-		};
-		700000000000000000000014 /* AppSwitcherProfiles */ = {
-			isa = PBXGroup;
-			children = (
-				20000000000000000000000D /* AppSwitcherProfilesFeature.swift */,
-			);
-			path = AppSwitcherProfiles;
-			sourceTree = "<group>";
-		};
-		700000000000000000000015 /* SystemStats */ = {
-			isa = PBXGroup;
-			children = (
-				20000000000000000000000E /* SystemStatsFeature.swift */,
-			);
-			path = SystemStats;
-			sourceTree = "<group>";
-		};
-		700000000000000000000016 /* StudyTimer */ = {
-			isa = PBXGroup;
-			children = (
-				20000000000000000000000F /* StudyTimerFeature.swift */,
-			);
-			path = StudyTimer;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -305,23 +236,16 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				100000000000000000000001 /* TouchBarApp.swift in Sources */,
+				100000000000000000000001 /* DroppyApp.swift in Sources */,
 				100000000000000000000002 /* AppDelegate.swift in Sources */,
 				100000000000000000000012 /* OverlayPanelController.swift in Sources */,
 				100000000000000000000013 /* OverlayRootView.swift in Sources */,
-				100000000000000000000003 /* MainTouchBarController.swift in Sources */,
 				100000000000000000000004 /* OnboardingWindowController.swift in Sources */,
 				100000000000000000000011 /* StatusItemController.swift in Sources */,
 				100000000000000000000006 /* PermissionsManager.swift in Sources */,
-				100000000000000000000007 /* TouchBarProfileManager.swift in Sources */,
+				100000000000000000000014 /* PanelGeometry.swift in Sources */,
 				100000000000000000000008 /* Settings.swift in Sources */,
-				100000000000000000000009 /* VolumeBrightnessFeature.swift in Sources */,
-				10000000000000000000000A /* MediaPlayerFeature.swift in Sources */,
 				10000000000000000000000B /* ClipboardStripFeature.swift in Sources */,
-				10000000000000000000000C /* FileShelfFeature.swift in Sources */,
-				10000000000000000000000D /* AppSwitcherProfilesFeature.swift in Sources */,
-				10000000000000000000000E /* SystemStatsFeature.swift in Sources */,
-				10000000000000000000000F /* StudyTimerFeature.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -448,26 +372,28 @@
 		900000000000000000000007 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				BUNDLE_LOADER = "";
+				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
 				GENERATE_INFOPLIST_FILE = YES;
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.ranveer.droppy.tests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_VERSION = 5.0;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Droppy.app/Contents/MacOS/Droppy";
 			};
 			name = Debug;
 		};
 		900000000000000000000008 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				BUNDLE_LOADER = "";
+				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
 				GENERATE_INFOPLIST_FILE = YES;
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.ranveer.droppy.tests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_VERSION = 5.0;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Droppy.app/Contents/MacOS/Droppy";
 			};
 			name = Release;
 		};

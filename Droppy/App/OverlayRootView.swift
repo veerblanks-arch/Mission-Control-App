@@ -7,57 +7,22 @@ struct OverlayRootView: View {
     @State private var clipboardSearchText = ""
 
     var body: some View {
-        Group {
-            if model.isExpanded {
-                expandedBody
-            } else {
-                collapsedBody
-            }
-        }
-    }
-
-    private var collapsedBody: some View {
-        Button {
-            model.expand()
-        } label: {
-            Color.clear
-            .frame(width: 112, height: 24)
-            .background(.black, in: Capsule())
-            .overlay {
-                Capsule()
-                    .strokeBorder(.white.opacity(0.16), lineWidth: 1)
-            }
-            .shadow(color: .black.opacity(0.18), radius: 10, y: 3)
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel("Open Droppy")
-    }
-
-    private var expandedBody: some View {
         VStack(spacing: 0) {
             header
 
-            Picker("Feature", selection: $model.selectedFeature) {
-                ForEach(OverlayFeature.allCases) { feature in
-                    Label(feature.title, systemImage: feature.symbolName)
-                        .tag(feature)
-                }
-            }
-            .pickerStyle(.segmented)
-            .labelsHidden()
-            .padding(.horizontal, 18)
-            .padding(.bottom, 14)
-
             Divider()
 
-            featureContent
+            ClipboardManagerView(
+                manager: clipboardManager,
+                searchText: $clipboardSearchText
+            )
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .frame(minWidth: 360, minHeight: 420)
         .background(.regularMaterial)
-        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
         .overlay {
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
+            RoundedRectangle(cornerRadius: 10, style: .continuous)
                 .strokeBorder(.white.opacity(0.16), lineWidth: 1)
         }
     }
@@ -77,56 +42,10 @@ struct OverlayRootView: View {
             }
 
             Spacer()
-
-            Button {
-                model.collapse()
-            } label: {
-                Image(systemName: "chevron.up")
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(.secondary)
-                    .frame(width: 28, height: 28)
-                    .background(.thinMaterial, in: Circle())
-            }
-            .buttonStyle(.plain)
-            .help("Collapse")
         }
         .padding(.horizontal, 18)
         .padding(.top, 18)
         .padding(.bottom, 16)
-    }
-
-    @ViewBuilder
-    private var featureContent: some View {
-        switch model.selectedFeature {
-        case .clipboard:
-            ClipboardManagerView(
-                manager: clipboardManager,
-                searchText: $clipboardSearchText
-            )
-        case .shelf, .basket, .media:
-            featurePlaceholder
-        }
-    }
-
-    private var featurePlaceholder: some View {
-        VStack(spacing: 14) {
-            Image(systemName: model.selectedFeature.symbolName)
-                .font(.system(size: 34, weight: .semibold))
-                .foregroundStyle(.tint)
-                .frame(width: 64, height: 64)
-                .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
-
-            Text(model.selectedFeature.title)
-                .font(.system(size: 20, weight: .semibold))
-
-            Text(model.selectedFeature.phaseMessage)
-                .font(.system(size: 13))
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
-                .lineLimit(nil)
-                .frame(maxWidth: 280)
-        }
-        .padding(24)
     }
 }
 
@@ -286,63 +205,20 @@ private struct ClipboardItemRow: View {
     }
 }
 
-enum OverlayFeature: String, CaseIterable, Identifiable {
+enum OverlayFeature: String, Identifiable {
     case clipboard
-    case shelf
-    case basket
-    case media
 
     var id: String { rawValue }
 
     var title: String {
-        switch self {
-        case .clipboard:
-            return "Clipboard"
-        case .shelf:
-            return "Shelf"
-        case .basket:
-            return "Basket"
-        case .media:
-            return "Media"
-        }
+        "Clipboard"
     }
 
     var symbolName: String {
-        switch self {
-        case .clipboard:
-            return "doc.on.clipboard"
-        case .shelf:
-            return "tray.and.arrow.down"
-        case .basket:
-            return "basket"
-        case .media:
-            return "play.rectangle"
-        }
+        "doc.on.clipboard"
     }
 
     var subtitle: String {
-        switch self {
-        case .clipboard:
-            return "Clipboard history"
-        case .shelf:
-            return "File shelf later"
-        case .basket:
-            return "Floating basket later"
-        case .media:
-            return "Media controls later"
-        }
-    }
-
-    var phaseMessage: String {
-        switch self {
-        case .clipboard:
-            return "Clipboard history is active. Copy text, images, or files to see them here."
-        case .shelf:
-            return "Phase 2 will add local file stashing and drag-out support."
-        case .basket:
-            return "Phase 3 will add the drag gesture drop zone."
-        case .media:
-            return "Phase 4 will bring back artwork-tinted media controls in this panel."
-        }
+        "Clipboard history"
     }
 }

@@ -37,7 +37,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         hasCompletedStartup = true
         clipboardManager.start()
         statusItemController.start()
-        statusItemController.showOverlayAfterLaunch()
+
+#if DEBUG
+        if CommandLine.arguments.contains("--show-panel") {
+            DispatchQueue.main.async { [weak self] in
+                self?.statusItemController.showClipboard()
+            }
+        }
+#endif
 
         if !Settings.shared.hasSeenOnboarding {
             showSettings()

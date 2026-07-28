@@ -3,7 +3,7 @@ import AppKit
 private var retainedAppDelegate: AppDelegate?
 
 @main
-enum OverlayApp {
+enum DroppyApp {
     static func main() {
         let app = NSApplication.shared
         let delegate = AppDelegate()

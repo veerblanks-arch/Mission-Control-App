@@ -41,12 +41,6 @@ final class StatusItemController: NSObject {
         statusItem = nil
     }
 
-    func showOverlayAfterLaunch() {
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) { [weak self] in
-            self?.showOverlay()
-        }
-    }
-
     func showClipboard() {
         guard let button = statusItem?.button else {
             return

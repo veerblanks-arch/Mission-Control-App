@@ -1,36 +1,42 @@
 import AppKit
-import Combine
 import SwiftUI
 
-final class OverlayPanelController: NSWindowController, NSWindowDelegate {
-    private enum Constants {
-        static let collapsedSize = NSSize(width: 112, height: 24)
-        static let expandedSize = NSSize(width: 420, height: 560)
-        static let topPadding: CGFloat = 0
-        static let screenEdgePadding: CGFloat = 12
-    }
+private final class DroppyPanel: NSPanel {
+    override var canBecomeKey: Bool { true }
+    override var canBecomeMain: Bool { false }
+}
 
+final class OverlayPanelController: NSWindowController, NSWindowDelegate {
     private let model = OverlayPanelModel()
-    private var cancellables: Set<AnyCancellable> = []
-    private var anchorScreen: NSScreen?
+    private weak var anchorButton: NSStatusBarButton?
+    private var globalMouseMonitor: Any?
+    private var localMouseMonitor: Any?
+    private var localKeyMonitor: Any?
+    private var screenObserver: NSObjectProtocol?
 
     init() {
-        let panel = NSPanel(
-            contentRect: NSRect(origin: .zero, size: Constants.collapsedSize),
-            styleMask: [.borderless, .nonactivatingPanel],
+        let initialSize = Settings.shared.panelSize
+        let panel = DroppyPanel(
+            contentRect: NSRect(origin: .zero, size: initialSize),
+            styleMask: [.borderless, .nonactivatingPanel, .resizable],
             backing: .buffered,
             defer: false
         )
         panel.title = "Droppy"
         panel.isFloatingPanel = true
-        panel.level = .statusBar
-        panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
+        panel.level = .popUpMenu
+        panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .transient]
         panel.backgroundColor = .clear
         panel.isOpaque = false
         panel.hasShadow = true
         panel.isReleasedWhenClosed = false
         panel.hidesOnDeactivate = false
+        panel.isMovable = false
         panel.isMovableByWindowBackground = false
+        panel.becomesKeyOnlyIfNeeded = true
+        panel.animationBehavior = .utilityWindow
+        panel.minSize = PanelGeometry.minimumSize
+        panel.maxSize = PanelGeometry.maximumSize
         panel.contentViewController = NSHostingController(
             rootView: OverlayRootView(
                 model: model,
@@ -41,12 +47,17 @@ final class OverlayPanelController: NSWindowController, NSWindowDelegate {
         super.init(window: panel)
 
         panel.delegate = self
-        model.$isExpanded
-            .dropFirst()
-            .sink { [weak self] _ in
-                self?.positionPanel(animated: true)
+        screenObserver = NotificationCenter.default.addObserver(
+            forName: NSApplication.didChangeScreenParametersNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            guard self?.window?.isVisible == true else {
+                return
             }
-            .store(in: &cancellables)
+
+            self?.positionPanel()
+        }
     }
 
     @available(*, unavailable)
@@ -54,87 +65,136 @@ final class OverlayPanelController: NSWindowController, NSWindowDelegate {
         fatalError("init(coder:) has not been implemented")
     }
 
-    func toggle(relativeTo statusButton: NSStatusBarButton) {
-        updateAnchor(relativeTo: statusButton)
-
-        if window?.isVisible == true {
-            model.toggleExpanded()
-        } else {
-            model.collapse()
-            show()
+    deinit {
+        stopDismissalMonitoring()
+        if let screenObserver {
+            NotificationCenter.default.removeObserver(screenObserver)
         }
     }
 
-    func show(relativeTo statusButton: NSStatusBarButton) {
-        updateAnchor(relativeTo: statusButton)
-        show()
-    }
-
-    func showClipboard(relativeTo statusButton: NSStatusBarButton) {
-        updateAnchor(relativeTo: statusButton)
-        model.selectedFeature = .clipboard
-        model.expand()
-        show()
-    }
-
-    private func updateAnchor(relativeTo statusButton: NSStatusBarButton) {
-        anchorScreen = statusButton.window?.screen ?? NSScreen.main
-    }
-
-    private func show() {
-        positionPanel(animated: false)
-        showWindow(nil)
-        window?.orderFrontRegardless()
-    }
-
-    private func positionPanel(animated: Bool) {
-        guard let window, let screen = anchorScreen ?? window.screen ?? NSScreen.main else {
+    func toggle(relativeTo statusButton: NSStatusBarButton) {
+        if window?.isVisible == true {
+            closePanel()
             return
         }
 
-        let size = model.isExpanded ? Constants.expandedSize : Constants.collapsedSize
-        let screenFrame = screen.frame
-        let menuBarHeight = max(screenFrame.maxY - screen.visibleFrame.maxY, Constants.collapsedSize.height)
-        let collapsedTopInset = max((menuBarHeight - size.height) / 2, 0)
-        let topInset = model.isExpanded ? Constants.topPadding : collapsedTopInset
-        let topY = screenFrame.maxY - topInset
-        var frame = NSRect(
-            x: screenFrame.midX - size.width / 2,
-            y: topY - size.height,
-            width: size.width,
-            height: size.height
-        )
-        frame.origin.x = min(
-            max(frame.origin.x, screenFrame.minX + Constants.screenEdgePadding),
-            screenFrame.maxX - frame.width - Constants.screenEdgePadding
-        )
-        frame.origin.y = max(frame.origin.y, screenFrame.minY + Constants.screenEdgePadding)
+        show(relativeTo: statusButton)
+    }
 
-        if animated {
-            NSAnimationContext.runAnimationGroup { context in
-                context.duration = 0.18
-                context.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
-                window.animator().setFrame(frame, display: true)
-            }
-        } else {
-            window.setFrame(frame, display: true)
+    func show(relativeTo statusButton: NSStatusBarButton) {
+        anchorButton = statusButton
+        showPanel()
+    }
+
+    func showClipboard(relativeTo statusButton: NSStatusBarButton) {
+        model.selectedFeature = .clipboard
+        show(relativeTo: statusButton)
+    }
+
+    func windowDidResize(_ notification: Notification) {
+        guard let size = window?.frame.size else {
+            return
         }
+
+        Settings.shared.panelSize = size
+    }
+
+    func windowDidEndLiveResize(_ notification: Notification) {
+        positionPanel()
+    }
+
+    private func showPanel() {
+        positionPanel()
+        window?.makeKeyAndOrderFront(nil)
+        startDismissalMonitoring()
+    }
+
+    private func closePanel() {
+        stopDismissalMonitoring()
+        window?.orderOut(nil)
+    }
+
+    private func positionPanel() {
+        guard
+            let window,
+            let anchorFrame = anchorFrame(),
+            let screen = anchorButton?.window?.screen ?? NSScreen.main
+        else {
+            return
+        }
+
+        let frame = PanelGeometry.anchoredFrame(
+            size: Settings.shared.panelSize,
+            anchorFrame: anchorFrame,
+            visibleScreenFrame: screen.visibleFrame
+        )
+        window.setFrame(frame, display: true)
+    }
+
+    private func anchorFrame() -> NSRect? {
+        guard let anchorButton, let anchorWindow = anchorButton.window else {
+            return nil
+        }
+
+        let frameInWindow = anchorButton.convert(anchorButton.bounds, to: nil)
+        return anchorWindow.convertToScreen(frameInWindow)
+    }
+
+    private func startDismissalMonitoring() {
+        stopDismissalMonitoring()
+
+        globalMouseMonitor = NSEvent.addGlobalMonitorForEvents(
+            matching: [.leftMouseDown, .rightMouseDown]
+        ) { [weak self] _ in
+            self?.dismissIfOutsidePanel(at: NSEvent.mouseLocation)
+        }
+
+        localMouseMonitor = NSEvent.addLocalMonitorForEvents(
+            matching: [.leftMouseDown, .rightMouseDown]
+        ) { [weak self] event in
+            self?.dismissIfOutsidePanel(at: NSEvent.mouseLocation)
+            return event
+        }
+
+        localKeyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+            guard event.keyCode == 53 else {
+                return event
+            }
+
+            self?.closePanel()
+            return nil
+        }
+    }
+
+    private func stopDismissalMonitoring() {
+        if let globalMouseMonitor {
+            NSEvent.removeMonitor(globalMouseMonitor)
+        }
+        if let localMouseMonitor {
+            NSEvent.removeMonitor(localMouseMonitor)
+        }
+        if let localKeyMonitor {
+            NSEvent.removeMonitor(localKeyMonitor)
+        }
+
+        globalMouseMonitor = nil
+        localMouseMonitor = nil
+        localKeyMonitor = nil
+    }
+
+    private func dismissIfOutsidePanel(at screenPoint: NSPoint) {
+        guard let window, window.isVisible else {
+            return
+        }
+
+        if window.frame.contains(screenPoint) || anchorFrame()?.contains(screenPoint) == true {
+            return
+        }
+
+        closePanel()
     }
 }
 
 final class OverlayPanelModel: ObservableObject {
     @Published var selectedFeature: OverlayFeature = .clipboard
-    @Published private(set) var isExpanded = false
-
-    func expand() {
-        isExpanded = true
-    }
-
-    func collapse() {
-        isExpanded = false
-    }
-
-    func toggleExpanded() {
-        isExpanded.toggle()
-    }
 }
