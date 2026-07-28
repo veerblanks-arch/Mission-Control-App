@@ -183,9 +183,9 @@ final class ClipboardManagerFeature: ObservableObject {
         try? repository?.payload(for: item)
     }
 
-    func dragWriters(for item: ClipboardItem) -> [NSPasteboardWriting] {
+    func dragContent(for item: ClipboardItem) -> ClipboardDragContent {
         guard let payload = try? repository?.payload(for: item) else {
-            return []
+            return .empty
         }
 
         switch item.kind {
@@ -203,19 +203,29 @@ final class ClipboardManagerFeature: ObservableObject {
             if let data = payload.htmlData {
                 pasteboardItem.setData(data, forType: .html)
             }
-            return [pasteboardItem]
+            return ClipboardDragContent(writers: [pasteboardItem])
         case .file:
-            return payload.fileReferences
+            let writers = payload.fileReferences
                 .map(\.resolvedURL)
                 .filter { FileManager.default.fileExists(atPath: $0.path) }
                 .map { $0 as NSURL }
+            return ClipboardDragContent(writers: writers)
         case .image, .screenshot:
             guard let imageData = payload.imageData else {
-                return []
+                return .empty
             }
-            let pasteboardItem = NSPasteboardItem()
-            pasteboardItem.setData(imageData, forType: .png)
-            return [pasteboardItem]
+            let delegate = ClipboardImageFilePromiseDelegate(
+                imageData: imageData,
+                fileName: Self.imageFileName(for: item)
+            )
+            let provider = NSFilePromiseProvider(
+                fileType: UTType.png.identifier,
+                delegate: delegate
+            )
+            return ClipboardDragContent(
+                writers: [provider],
+                retainedObjects: [delegate]
+            )
         }
     }
 
@@ -605,12 +615,14 @@ final class ClipboardManagerFeature: ObservableObject {
         }
     }
 
-    private func restoreToPasteboard(_ item: ClipboardItem) -> Bool {
+    func restoreToPasteboard(
+        _ item: ClipboardItem,
+        pasteboard: NSPasteboard = .general
+    ) -> Bool {
         guard let payload = try? repository?.payload(for: item) else {
             return false
         }
 
-        let pasteboard = NSPasteboard.general
         pasteboard.clearContents()
 
         switch item.kind {
@@ -638,16 +650,17 @@ final class ClipboardManagerFeature: ObservableObject {
             }
             pasteboard.writeObjects(urls)
         case .image, .screenshot:
-            guard
-                let imageData = payload.imageData,
-                let image = NSImage(data: imageData)
-            else {
+            guard let imageData = payload.imageData else {
                 return false
             }
-            pasteboard.writeObjects([image])
+            guard pasteboard.writeObjects([Self.imagePasteboardItem(data: imageData)]) else {
+                return false
+            }
         }
 
-        lastChangeCount = pasteboard.changeCount
+        if pasteboard === NSPasteboard.general {
+            lastChangeCount = pasteboard.changeCount
+        }
         return true
     }
 
@@ -736,6 +749,21 @@ final class ClipboardManagerFeature: ObservableObject {
         }
     }
 
+    private static func imagePasteboardItem(data: Data) -> NSPasteboardItem {
+        let item = NSPasteboardItem()
+        item.setData(data, forType: .png)
+        if let image = NSImage(data: data), let tiffData = image.tiffRepresentation {
+            item.setData(tiffData, forType: .tiff)
+        }
+        return item
+    }
+
+    private static func imageFileName(for item: ClipboardItem) -> String {
+        let baseName = (item.title as NSString).deletingPathExtension
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        return "\(baseName.isEmpty ? "Droppy Image" : baseName).png"
+    }
+
     private static func postCommandV() {
         let source = CGEventSource(stateID: .hidSystemState)
         let keyDown = CGEvent(
@@ -752,5 +780,56 @@ final class ClipboardManagerFeature: ObservableObject {
         keyUp?.flags = .maskCommand
         keyDown?.post(tap: .cghidEventTap)
         keyUp?.post(tap: .cghidEventTap)
+    }
+}
+
+final class ClipboardDragContent {
+    static let empty = ClipboardDragContent(writers: [])
+
+    let writers: [NSPasteboardWriting]
+    fileprivate let retainedObjects: [AnyObject]
+
+    init(
+        writers: [NSPasteboardWriting],
+        retainedObjects: [AnyObject] = []
+    ) {
+        self.writers = writers
+        self.retainedObjects = retainedObjects
+    }
+}
+
+private final class ClipboardImageFilePromiseDelegate: NSObject, NSFilePromiseProviderDelegate {
+    private let imageData: Data
+    private let fileName: String
+
+    init(imageData: Data, fileName: String) {
+        self.imageData = imageData
+        self.fileName = fileName
+    }
+
+    func filePromiseProvider(
+        _ filePromiseProvider: NSFilePromiseProvider,
+        fileNameForType fileType: String
+    ) -> String {
+        fileName
+    }
+
+    nonisolated func filePromiseProvider(
+        _ filePromiseProvider: NSFilePromiseProvider,
+        writePromiseTo url: URL,
+        completionHandler: @escaping ((any Error)?) -> Void
+    ) {
+        do {
+            try imageData.write(to: url, options: .atomic)
+            completionHandler(nil)
+        } catch {
+            completionHandler(error)
+        }
+    }
+
+    func operationQueue(
+        for filePromiseProvider: NSFilePromiseProvider
+    ) -> OperationQueue {
+        .main
     }
 }

@@ -1,5 +1,6 @@
 import AppKit
 import CryptoKit
+import UniformTypeIdentifiers
 import XCTest
 @testable import Droppy
 
@@ -294,6 +295,69 @@ final class DroppyTests: XCTestCase {
         XCTAssertFalse(authorizer.canPostPasteEvent())
         XCTAssertFalse(authorizer.canPostPasteEvent())
         XCTAssertEqual(requestCount, 1)
+    }
+
+    @MainActor
+    func testImageRestorePublishesPNGAndTIFF() throws {
+        let fixture = try ClipboardTestFixture()
+        let repository = try fixture.repository()
+        let imageData = try testPNGData(width: 12, height: 8)
+        var item = clipboardItem(capturedAt: Date())
+        item.kind = .image
+        item.title = "Image"
+        item.storedByteCount = try repository.savePayload(
+            .image(data: imageData, typeIdentifier: UTType.png.identifier),
+            id: item.payloadID
+        )
+        try repository.save(ClipboardArchive(items: [item]))
+        let manager = ClipboardManagerFeature(
+            repository: repository,
+            screenshotMonitor: ScreenshotMonitor(configuredRootURL: fixture.rootURL)
+        )
+        let pasteboard = NSPasteboard(
+            name: NSPasteboard.Name("DroppyImagePasteTests-\(UUID().uuidString)")
+        )
+
+        XCTAssertTrue(manager.restoreToPasteboard(item, pasteboard: pasteboard))
+        XCTAssertEqual(pasteboard.data(forType: .png), imageData)
+        XCTAssertNotNil(pasteboard.data(forType: .tiff))
+    }
+
+    @MainActor
+    func testImageDragPromisesCorrectlyNamedPNG() throws {
+        let fixture = try ClipboardTestFixture()
+        let repository = try fixture.repository()
+        let imageData = try testPNGData(width: 10, height: 6)
+        var item = clipboardItem(capturedAt: Date())
+        item.kind = .screenshot
+        item.title = "Capture.png"
+        item.storedByteCount = try repository.savePayload(
+            .image(data: imageData, typeIdentifier: UTType.png.identifier),
+            id: item.payloadID
+        )
+        try repository.save(ClipboardArchive(items: [item]))
+        let manager = ClipboardManagerFeature(
+            repository: repository,
+            screenshotMonitor: ScreenshotMonitor(configuredRootURL: fixture.rootURL)
+        )
+
+        let dragContent = manager.dragContent(for: item)
+        let provider = try XCTUnwrap(dragContent.writers.first as? NSFilePromiseProvider)
+        let delegate = try XCTUnwrap(provider.delegate)
+        XCTAssertEqual(provider.fileType, UTType.png.identifier)
+        XCTAssertEqual(
+            delegate.filePromiseProvider(provider, fileNameForType: provider.fileType),
+            "Capture.png"
+        )
+
+        let outputURL = fixture.rootURL.appendingPathComponent("Promised.png")
+        let writeCompleted = expectation(description: "Image file promise writes PNG")
+        delegate.filePromiseProvider(provider, writePromiseTo: outputURL) { error in
+            XCTAssertNil(error)
+            writeCompleted.fulfill()
+        }
+        wait(for: [writeCompleted], timeout: 2)
+        XCTAssertEqual(try Data(contentsOf: outputURL), imageData)
     }
 
     func testScreenshotMonitorFindsDocumentsScreenshotsFolder() throws {

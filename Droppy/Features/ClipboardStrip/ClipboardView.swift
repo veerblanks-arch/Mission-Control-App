@@ -452,7 +452,7 @@ private struct ClipboardItemRow: View {
 
             if !isSelecting {
                 ClipboardDragHandle(
-                    writers: { manager.dragWriters(for: item) },
+                    content: { manager.dragContent(for: item) },
                     preview: dragPreview,
                     onSuccessfulDrop: { manager.completeSuccessfulDrag() }
                 )
@@ -542,7 +542,7 @@ private struct ClipboardItemRow: View {
 }
 
 private struct ClipboardDragHandle: NSViewRepresentable {
-    let writers: () -> [NSPasteboardWriting]
+    let content: () -> ClipboardDragContent
     let preview: ClipboardDragPreview
     let onSuccessfulDrop: () -> Void
 
@@ -551,7 +551,7 @@ private struct ClipboardDragHandle: NSViewRepresentable {
     }
 
     func updateNSView(_ view: ClipboardDragSourceView, context: Context) {
-        view.writers = writers
+        view.content = content
         view.preview = preview
         view.onSuccessfulDrop = onSuccessfulDrop
     }
@@ -601,10 +601,12 @@ private struct ClipboardDragPreview {
 }
 
 private final class ClipboardDragSourceView: NSView, NSDraggingSource {
-    var writers: (() -> [NSPasteboardWriting])?
+    var content: (() -> ClipboardDragContent)?
     var preview: ClipboardDragPreview?
     var onSuccessfulDrop: (() -> Void)?
     private var didBeginDrag = false
+    private var activeContent: ClipboardDragContent?
+    private var recentlyCompletedContents: [ClipboardDragContent] = []
 
     override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
@@ -636,16 +638,18 @@ private final class ClipboardDragSourceView: NSView, NSDraggingSource {
     override func mouseDragged(with event: NSEvent) {
         guard
             !didBeginDrag,
-            let writers,
+            let content,
             let preview
         else {
             return
         }
-        let pasteboardWriters = writers()
+        let dragContent = content()
+        let pasteboardWriters = dragContent.writers
         guard !pasteboardWriters.isEmpty else {
             return
         }
         didBeginDrag = true
+        activeContent = dragContent
 
         let previewImage = preview.image
         let previewSize = previewImage.size
@@ -685,6 +689,16 @@ private final class ClipboardDragSourceView: NSView, NSDraggingSource {
         endedAt screenPoint: NSPoint,
         operation: NSDragOperation
     ) {
+        if !operation.isEmpty, let activeContent {
+            recentlyCompletedContents.append(activeContent)
+            DispatchQueue.main.asyncAfter(deadline: .now() + 30) { [weak self, weak activeContent] in
+                guard let activeContent else {
+                    return
+                }
+                self?.recentlyCompletedContents.removeAll { $0 === activeContent }
+            }
+        }
+        activeContent = nil
         if !operation.isEmpty {
             onSuccessfulDrop?()
         }
