@@ -3,6 +3,7 @@ import SwiftUI
 
 final class DropZoneCoordinator {
     private static let releaseGracePeriod: TimeInterval = 0.25
+    private static let resultDisplayDuration: TimeInterval = 1.2
 
     private enum State {
         case idle
@@ -160,14 +161,14 @@ final class DropZoneCoordinator {
         let addedCount = shelf.add(urls)
         guard addedCount > 0 else {
             panelController.showFailure()
-            scheduleDismissal(after: 2)
+            scheduleDismissal(after: Self.resultDisplayDuration)
             return false
         }
 
         hoverWorkItem?.cancel()
         state = .success
         panelController.showSuccess(count: addedCount)
-        scheduleDismissal(after: 2)
+        scheduleDismissal(after: Self.resultDisplayDuration)
         return true
     }
 

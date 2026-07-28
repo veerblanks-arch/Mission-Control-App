@@ -165,7 +165,7 @@ private struct ShelfItemRow: View {
             }
             .buttonStyle(.plain)
             .onDrag {
-                NSItemProvider(contentsOf: item.resolvedURL) ?? NSItemProvider()
+                dragItemProvider
             }
             .contextMenu {
                 Button("Open") {
@@ -210,6 +210,18 @@ private struct ShelfItemRow: View {
             .scaledToFit()
             .frame(width: 38, height: 38)
             .opacity(item.exists ? 1 : 0.45)
+    }
+
+    private var dragItemProvider: NSItemProvider {
+        guard
+            item.exists,
+            let provider = NSItemProvider(contentsOf: item.resolvedURL)
+        else {
+            return NSItemProvider()
+        }
+
+        provider.suggestedName = item.displayName
+        return provider
     }
 }
 
