@@ -220,7 +220,7 @@ private struct ShelfItemRow: View {
             return NSItemProvider()
         }
 
-        provider.suggestedName = item.displayName
+        provider.suggestedName = item.dragSuggestedName
         return provider
     }
 }

@@ -129,6 +129,18 @@ final class DroppyTests: XCTestCase {
         XCTAssertEqual(reloadedFeature.items.count, 1)
         XCTAssertFalse(try XCTUnwrap(reloadedFeature.items.first).exists)
     }
+
+    func testShelfDragSuggestedNameLeavesExtensionForProvider() throws {
+        let fixture = try ShelfTestFixture()
+        let file = try fixture.createFile(named: "archive.tar.gz")
+        let folder = try fixture.createFolder(named: "Folder.with.dots")
+
+        let fileItem = ShelfItem(url: file, addedAt: Date(), order: 1)
+        let folderItem = ShelfItem(url: folder, addedAt: Date(), order: 2)
+
+        XCTAssertEqual(fileItem.dragSuggestedName, "archive.tar")
+        XCTAssertEqual(folderItem.dragSuggestedName, "Folder.with.dots")
+    }
 }
 
 private final class ShelfTestFixture {

@@ -194,6 +194,10 @@ struct ShelfItem: Identifiable, Codable, Equatable {
         addedAt.formatted(date: .abbreviated, time: .shortened)
     }
 
+    var dragSuggestedName: String {
+        kind == .file ? (displayName as NSString).deletingPathExtension : displayName
+    }
+
     @discardableResult
     mutating func refreshResolvedReference() -> Bool {
         if FileManager.default.fileExists(atPath: lastKnownPath) {
