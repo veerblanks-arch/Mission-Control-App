@@ -1,6 +1,7 @@
 import AppKit
 import Darwin
 
+@MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
     private lazy var overlayPanelController = OverlayPanelController()
     private lazy var statusItemController = StatusItemController(
@@ -19,6 +20,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let clipboardManager = ClipboardManagerFeature.shared
     private let shelf = ShelfFeature.shared
     private lazy var dropZoneCoordinator = DropZoneCoordinator(shelf: shelf)
+    private lazy var screenshotNotificationCoordinator = ScreenshotNotificationCoordinator {
+        [weak self] itemID in
+        self?.statusItemController.showClipboard(focusedItemID: itemID)
+    }
     private var hasCompletedStartup = false
 
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -37,6 +42,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         hasCompletedStartup = true
+        clipboardManager.onScreenshotCaptured = { [weak self] item, image in
+            self?.screenshotNotificationCoordinator.show(item: item, image: image)
+        }
         clipboardManager.start()
         statusItemController.start()
         dropZoneCoordinator.start()

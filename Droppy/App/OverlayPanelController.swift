@@ -48,6 +48,9 @@ final class OverlayPanelController: NSWindowController, NSWindowDelegate {
         super.init(window: panel)
 
         panel.delegate = self
+        ClipboardManagerFeature.shared.onRequestPanelClose = { [weak self] in
+            self?.closePanel()
+        }
         screenObserver = NotificationCenter.default.addObserver(
             forName: NSApplication.didChangeScreenParametersNotification,
             object: nil,
@@ -87,8 +90,14 @@ final class OverlayPanelController: NSWindowController, NSWindowDelegate {
         showPanel()
     }
 
-    func showClipboard(relativeTo statusButton: NSStatusBarButton) {
+    func showClipboard(
+        relativeTo statusButton: NSStatusBarButton,
+        focusedItemID: UUID? = nil
+    ) {
         model.selectedFeature = .clipboard
+        if let focusedItemID {
+            ClipboardManagerFeature.shared.focus(focusedItemID)
+        }
         show(relativeTo: statusButton)
     }
 
@@ -105,6 +114,9 @@ final class OverlayPanelController: NSWindowController, NSWindowDelegate {
     }
 
     private func showPanel() {
+        ClipboardManagerFeature.shared.setPasteTarget(
+            NSWorkspace.shared.frontmostApplication
+        )
         positionPanel()
         window?.makeKeyAndOrderFront(nil)
         startDismissalMonitoring()

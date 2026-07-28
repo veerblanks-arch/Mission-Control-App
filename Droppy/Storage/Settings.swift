@@ -7,6 +7,8 @@ final class Settings {
         static let hasSeenOnboarding = "hasSeenOnboarding"
         static let panelWidth = "panelWidth"
         static let panelHeight = "panelHeight"
+        static let clipboardCapturePaused = "clipboardCapturePaused"
+        static let excludedClipboardApps = "excludedClipboardApps"
     }
 
     private let defaults: UserDefaults
@@ -36,5 +38,55 @@ final class Settings {
             defaults.set(size.height, forKey: Keys.panelHeight)
         }
     }
+
+    var clipboardCapturePaused: Bool {
+        get { defaults.bool(forKey: Keys.clipboardCapturePaused) }
+        set { defaults.set(newValue, forKey: Keys.clipboardCapturePaused) }
+    }
+
+    var excludedClipboardApps: [ExcludedClipboardApp] {
+        get {
+            if
+                let data = defaults.data(forKey: Keys.excludedClipboardApps),
+                let apps = try? JSONDecoder().decode([ExcludedClipboardApp].self, from: data)
+            {
+                return apps
+            }
+            return Self.defaultExcludedClipboardApps
+        }
+        set {
+            guard let data = try? JSONEncoder().encode(newValue) else {
+                return
+            }
+            defaults.set(data, forKey: Keys.excludedClipboardApps)
+        }
+    }
+
+    private static let defaultExcludedClipboardApps = [
+        ExcludedClipboardApp(
+            bundleIdentifier: "com.1password.1password",
+            displayName: "1Password"
+        ),
+        ExcludedClipboardApp(
+            bundleIdentifier: "com.agilebits.onepassword7",
+            displayName: "1Password 7"
+        ),
+        ExcludedClipboardApp(
+            bundleIdentifier: "com.bitwarden.desktop",
+            displayName: "Bitwarden"
+        ),
+        ExcludedClipboardApp(
+            bundleIdentifier: "org.keepassxc.keepassxc",
+            displayName: "KeePassXC"
+        ),
+        ExcludedClipboardApp(
+            bundleIdentifier: "com.lastpass.LastPass",
+            displayName: "LastPass"
+        ),
+        ExcludedClipboardApp(
+            bundleIdentifier: "me.proton.pass",
+            displayName: "Proton Pass"
+        ),
+    ]
 
 }

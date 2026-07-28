@@ -21,6 +21,14 @@
 		100000000000000000000015 /* DropZoneGeometry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000018 /* DropZoneGeometry.swift */; };
 		100000000000000000000016 /* ShelfFeature.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000019 /* ShelfFeature.swift */; };
 		100000000000000000000017 /* DropZoneCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20000000000000000000001A /* DropZoneCoordinator.swift */; };
+		100000000000000000000018 /* ClipboardModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20000000000000000000001B /* ClipboardModels.swift */; };
+		100000000000000000000019 /* ClipboardSecurity.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20000000000000000000001C /* ClipboardSecurity.swift */; };
+		10000000000000000000001A /* ClipboardRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20000000000000000000001D /* ClipboardRepository.swift */; };
+		10000000000000000000001B /* ClipboardCapture.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20000000000000000000001E /* ClipboardCapture.swift */; };
+		10000000000000000000001C /* ScreenshotMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20000000000000000000001F /* ScreenshotMonitor.swift */; };
+		10000000000000000000001D /* ClipboardOCRService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000020 /* ClipboardOCRService.swift */; };
+		10000000000000000000001E /* ClipboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000021 /* ClipboardView.swift */; };
+		10000000000000000000001F /* ScreenshotNotificationCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000022 /* ScreenshotNotificationCoordinator.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -51,6 +59,14 @@
 		200000000000000000000018 /* DropZoneGeometry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DropZoneGeometry.swift; sourceTree = "<group>"; };
 		200000000000000000000019 /* ShelfFeature.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShelfFeature.swift; sourceTree = "<group>"; };
 		20000000000000000000001A /* DropZoneCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DropZoneCoordinator.swift; sourceTree = "<group>"; };
+		20000000000000000000001B /* ClipboardModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClipboardModels.swift; sourceTree = "<group>"; };
+		20000000000000000000001C /* ClipboardSecurity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClipboardSecurity.swift; sourceTree = "<group>"; };
+		20000000000000000000001D /* ClipboardRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClipboardRepository.swift; sourceTree = "<group>"; };
+		20000000000000000000001E /* ClipboardCapture.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClipboardCapture.swift; sourceTree = "<group>"; };
+		20000000000000000000001F /* ScreenshotMonitor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScreenshotMonitor.swift; sourceTree = "<group>"; };
+		200000000000000000000020 /* ClipboardOCRService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClipboardOCRService.swift; sourceTree = "<group>"; };
+		200000000000000000000021 /* ClipboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClipboardView.swift; sourceTree = "<group>"; };
+		200000000000000000000022 /* ScreenshotNotificationCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScreenshotNotificationCoordinator.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -129,6 +145,14 @@
 			isa = PBXGroup;
 			children = (
 				20000000000000000000000B /* ClipboardStripFeature.swift */,
+				20000000000000000000001B /* ClipboardModels.swift */,
+				20000000000000000000001C /* ClipboardSecurity.swift */,
+				20000000000000000000001D /* ClipboardRepository.swift */,
+				20000000000000000000001E /* ClipboardCapture.swift */,
+				20000000000000000000001F /* ScreenshotMonitor.swift */,
+				200000000000000000000020 /* ClipboardOCRService.swift */,
+				200000000000000000000021 /* ClipboardView.swift */,
+				200000000000000000000022 /* ScreenshotNotificationCoordinator.swift */,
 			);
 			path = ClipboardStrip;
 			sourceTree = "<group>";
@@ -272,6 +296,14 @@
 				100000000000000000000015 /* DropZoneGeometry.swift in Sources */,
 				100000000000000000000008 /* Settings.swift in Sources */,
 				10000000000000000000000B /* ClipboardStripFeature.swift in Sources */,
+				100000000000000000000018 /* ClipboardModels.swift in Sources */,
+				100000000000000000000019 /* ClipboardSecurity.swift in Sources */,
+				10000000000000000000001A /* ClipboardRepository.swift in Sources */,
+				10000000000000000000001B /* ClipboardCapture.swift in Sources */,
+				10000000000000000000001C /* ScreenshotMonitor.swift in Sources */,
+				10000000000000000000001D /* ClipboardOCRService.swift in Sources */,
+				10000000000000000000001E /* ClipboardView.swift in Sources */,
+				10000000000000000000001F /* ScreenshotNotificationCoordinator.swift in Sources */,
 				100000000000000000000016 /* ShelfFeature.swift in Sources */,
 				100000000000000000000017 /* DropZoneCoordinator.swift in Sources */,
 			);

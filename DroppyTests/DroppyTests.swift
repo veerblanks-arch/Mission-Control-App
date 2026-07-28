@@ -1,4 +1,5 @@
 import AppKit
+import CryptoKit
 import XCTest
 @testable import Droppy
 
@@ -141,6 +142,211 @@ final class DroppyTests: XCTestCase {
         XCTAssertEqual(fileItem.dragSuggestedName, "archive.tar")
         XCTAssertEqual(folderItem.dragSuggestedName, "Folder.with.dots")
     }
+
+    func testClipboardRetentionPreservesPinsAndRemovesExpiredItems() {
+        let now = Date(timeIntervalSince1970: 1_000_000)
+        let expired = clipboardItem(capturedAt: now.addingTimeInterval(-604_801))
+        let recent = clipboardItem(capturedAt: now.addingTimeInterval(-60))
+        let pinned = clipboardItem(
+            capturedAt: now.addingTimeInterval(-700_000),
+            pinnedAt: now.addingTimeInterval(-700_000)
+        )
+
+        let removals = ClipboardRetentionPolicy().removalIDs(
+            from: [expired, recent, pinned],
+            now: now
+        )
+
+        XCTAssertTrue(removals.contains(expired.id))
+        XCTAssertFalse(removals.contains(recent.id))
+        XCTAssertFalse(removals.contains(pinned.id))
+    }
+
+    func testClipboardRetentionAppliesCountAndByteCapsOldestFirst() {
+        let now = Date(timeIntervalSince1970: 10_000)
+        let oldest = clipboardItem(capturedAt: now.addingTimeInterval(-30), bytes: 60)
+        let middle = clipboardItem(capturedAt: now.addingTimeInterval(-20), bytes: 60)
+        let newest = clipboardItem(capturedAt: now.addingTimeInterval(-10), bytes: 60)
+        let policy = ClipboardRetentionPolicy(
+            lifetime: 1_000,
+            maximumUnpinnedItems: 2,
+            maximumUnpinnedBytes: 100
+        )
+
+        let removals = policy.removalIDs(from: [newest, oldest, middle], now: now)
+
+        XCTAssertEqual(removals, Set([oldest.id, middle.id]))
+    }
+
+    func testClipboardSignatureKeepsDifferentFormattingSeparate() {
+        let plain = ClipboardCapture.signature(
+            kind: .text,
+            representations: [("public.utf8-plain-text", Data("hello".utf8))]
+        )
+        let rich = ClipboardCapture.signature(
+            kind: .text,
+            representations: [
+                ("public.utf8-plain-text", Data("hello".utf8)),
+                ("public.rtf", Data("{\\rtf1 hello}".utf8)),
+            ]
+        )
+
+        XCTAssertNotEqual(plain, rich)
+    }
+
+    func testClipboardEncryptionRejectsTampering() throws {
+        let cryptor = AESClipboardCryptor(
+            key: SymmetricKey(data: Data(repeating: 7, count: 32))
+        )
+        let additionalData = Data("test-context".utf8)
+        var encrypted = try cryptor.seal(
+            Data("private clipboard text".utf8),
+            authenticating: additionalData
+        )
+        encrypted[encrypted.index(before: encrypted.endIndex)] ^= 0x01
+
+        XCTAssertThrowsError(
+            try cryptor.open(encrypted, authenticating: additionalData)
+        )
+    }
+
+    func testClipboardRepositoryEncryptsIndexAndPayloadRoundTrip() throws {
+        let fixture = try ClipboardTestFixture()
+        let repository = try fixture.repository()
+        let payload = ClipboardPayload.text(
+            plainText: "phase-three-secret",
+            rtfData: nil,
+            rtfdData: nil,
+            htmlData: nil
+        )
+        var item = clipboardItem(capturedAt: Date())
+        item.storedByteCount = try repository.savePayload(payload, id: item.payloadID)
+        let archive = ClipboardArchive(items: [item])
+
+        try repository.save(archive)
+
+        let reloadedArchive = try repository.load()
+        let reloadedItem = try XCTUnwrap(reloadedArchive.items.first)
+        XCTAssertEqual(reloadedArchive.items.count, 1)
+        XCTAssertEqual(reloadedItem.id, item.id)
+        XCTAssertEqual(
+            reloadedItem.capturedAt.timeIntervalSince1970,
+            item.capturedAt.timeIntervalSince1970,
+            accuracy: 0.001
+        )
+        XCTAssertEqual(try repository.payload(for: item), payload)
+
+        let indexData = try Data(
+            contentsOf: fixture.rootURL.appendingPathComponent("History.enc")
+        )
+        let payloadData = try Data(
+            contentsOf: fixture.rootURL
+                .appendingPathComponent("Payloads")
+                .appendingPathComponent("\(item.payloadID.uuidString).enc")
+        )
+        XCTAssertNil(indexData.range(of: Data("phase-three-secret".utf8)))
+        XCTAssertNil(payloadData.range(of: Data("phase-three-secret".utf8)))
+    }
+
+    func testClipboardCaptureSkipsSensitivePasteboard() {
+        let pasteboard = NSPasteboard(
+            name: NSPasteboard.Name("DroppyTests-\(UUID().uuidString)")
+        )
+        pasteboard.declareTypes(
+            [.string, NSPasteboard.PasteboardType("org.nspasteboard.ConcealedType")],
+            owner: nil
+        )
+        pasteboard.setString("do not store", forType: .string)
+
+        XCTAssertNil(
+            ClipboardCaptureReader.capture(
+                from: pasteboard,
+                sourceApplication: nil
+            )
+        )
+    }
+
+    func testScreenshotMonitorFindsDocumentsScreenshotsFolder() throws {
+        let fixture = try ClipboardTestFixture()
+        let screenshotFolder = fixture.rootURL.appendingPathComponent(
+            "Screenshots",
+            isDirectory: true
+        )
+        try FileManager.default.createDirectory(
+            at: screenshotFolder,
+            withIntermediateDirectories: true
+        )
+        let screenshotURL = screenshotFolder.appendingPathComponent("capture.png")
+        try testPNGData().write(to: screenshotURL)
+
+        let createdAt = Date()
+        try FileManager.default.setAttributes(
+            [.modificationDate: createdAt],
+            ofItemAtPath: screenshotURL.path
+        )
+        let monitor = ScreenshotMonitor(configuredRootURL: fixture.rootURL)
+
+        let results = monitor.screenshots(
+            createdAfter: createdAt.addingTimeInterval(-1),
+            through: createdAt.addingTimeInterval(1)
+        )
+
+        XCTAssertEqual(results.map(\.standardizedFileURL), [screenshotURL.standardizedFileURL])
+    }
+
+    func testLegacyNumericDateClipboardArchiveMigrates() throws {
+        let fixture = try ClipboardTestFixture()
+        let repository = try fixture.repository()
+        let legacyURL = fixture.rootURL.deletingLastPathComponent()
+            .appendingPathComponent("clipboard_history.json")
+        let now = Date()
+        let legacyJSON: [[String: Any]] = [[
+            "content": "legacy text",
+            "date": now.timeIntervalSinceReferenceDate,
+            "sourceApp": "TextEdit",
+            "type": "text",
+            "isConcealed": false,
+        ]]
+        let data = try JSONSerialization.data(withJSONObject: legacyJSON)
+        try data.write(to: legacyURL)
+
+        let captures = repository.legacyCaptures(now: now)
+
+        XCTAssertEqual(captures.count, 1)
+        XCTAssertEqual(captures.first?.payload.plainText, "legacy text")
+    }
+
+    private func clipboardItem(
+        capturedAt: Date,
+        pinnedAt: Date? = nil,
+        bytes: Int64 = 10
+    ) -> ClipboardItem {
+        ClipboardItem(
+            id: UUID(),
+            kind: .text,
+            title: "Text",
+            subtitle: "4 characters",
+            sourceAppName: "Tests",
+            sourceBundleIdentifier: nil,
+            createdAt: capturedAt,
+            capturedAt: capturedAt,
+            pinnedAt: pinnedAt,
+            signature: UUID().uuidString,
+            payloadID: UUID(),
+            storedByteCount: bytes,
+            searchText: "text",
+            ocrText: nil
+        )
+    }
+
+    private func testPNGData() throws -> Data {
+        let image = NSImage(size: NSSize(width: 4, height: 4))
+        image.lockFocus()
+        NSColor.systemBlue.setFill()
+        NSRect(x: 0, y: 0, width: 4, height: 4).fill()
+        image.unlockFocus()
+        return try XCTUnwrap(image.pngData)
+    }
 }
 
 private final class ShelfTestFixture {
@@ -170,5 +376,32 @@ private final class ShelfTestFixture {
         let url = rootURL.appendingPathComponent(name, isDirectory: true)
         try FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
         return url
+    }
+}
+
+private final class ClipboardTestFixture {
+    let containerURL: URL
+    let rootURL: URL
+
+    init() throws {
+        containerURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent("DroppyClipboardTests-\(UUID().uuidString)", isDirectory: true)
+        rootURL = containerURL
+            .appendingPathComponent("Droppy", isDirectory: true)
+            .appendingPathComponent("Clipboard", isDirectory: true)
+        try FileManager.default.createDirectory(at: rootURL, withIntermediateDirectories: true)
+    }
+
+    deinit {
+        try? FileManager.default.removeItem(at: containerURL)
+    }
+
+    func repository() throws -> ClipboardRepository {
+        try ClipboardRepository(
+            rootURL: rootURL,
+            cryptor: AESClipboardCryptor(
+                key: SymmetricKey(data: Data(repeating: 3, count: 32))
+            )
+        )
     }
 }

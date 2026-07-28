@@ -41,12 +41,15 @@ final class StatusItemController: NSObject {
         statusItem = nil
     }
 
-    func showClipboard() {
+    func showClipboard(focusedItemID: UUID? = nil) {
         guard let button = statusItem?.button else {
             return
         }
 
-        overlayPanelController.showClipboard(relativeTo: button)
+        overlayPanelController.showClipboard(
+            relativeTo: button,
+            focusedItemID: focusedItemID
+        )
     }
 
     @objc private func statusItemClicked(_ sender: NSStatusBarButton) {
