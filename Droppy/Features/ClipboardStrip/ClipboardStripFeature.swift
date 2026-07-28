@@ -2,6 +2,100 @@ import AppKit
 import Combine
 import UniformTypeIdentifiers
 
+enum ClipboardDragExportStore {
+    static let retentionDuration: TimeInterval = 24 * 60 * 60
+
+    static var defaultRootURL: URL {
+        let cachesURL = FileManager.default.urls(
+            for: .cachesDirectory,
+            in: .userDomainMask
+        ).first ?? FileManager.default.temporaryDirectory
+        return cachesURL
+            .appendingPathComponent(
+                Bundle.main.bundleIdentifier ?? "com.ranveer.droppy",
+                isDirectory: true
+            )
+            .appendingPathComponent("DragExports", isDirectory: true)
+    }
+
+    static func makeExport(
+        data: Data,
+        fileName: String,
+        rootURL: URL = defaultRootURL,
+        now: Date = Date()
+    ) throws -> (directoryURL: URL, fileURL: URL) {
+        removeExpired(in: rootURL, now: now)
+        try FileManager.default.createDirectory(
+            at: rootURL,
+            withIntermediateDirectories: true
+        )
+
+        let directoryURL = rootURL
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try FileManager.default.createDirectory(
+            at: directoryURL,
+            withIntermediateDirectories: true
+        )
+        try FileManager.default.setAttributes(
+            [.creationDate: now, .modificationDate: now],
+            ofItemAtPath: directoryURL.path
+        )
+
+        let fileURL = directoryURL.appendingPathComponent(fileName)
+        do {
+            try data.write(to: fileURL, options: .atomic)
+            scheduleRemoval(of: directoryURL)
+            return (directoryURL, fileURL)
+        } catch {
+            try? FileManager.default.removeItem(at: directoryURL)
+            throw error
+        }
+    }
+
+    static func removeExpired(
+        in rootURL: URL = defaultRootURL,
+        now: Date = Date()
+    ) {
+        guard let exports = try? FileManager.default.contentsOfDirectory(
+            at: rootURL,
+            includingPropertiesForKeys: [
+                .isDirectoryKey,
+                .creationDateKey,
+                .contentModificationDateKey,
+            ],
+            options: [.skipsHiddenFiles]
+        ) else {
+            return
+        }
+
+        for exportURL in exports {
+            guard
+                let values = try? exportURL.resourceValues(
+                    forKeys: [
+                        .isDirectoryKey,
+                        .creationDateKey,
+                        .contentModificationDateKey,
+                    ]
+                ),
+                values.isDirectory == true,
+                let createdAt = values.creationDate ?? values.contentModificationDate,
+                now.timeIntervalSince(createdAt) >= retentionDuration
+            else {
+                continue
+            }
+            try? FileManager.default.removeItem(at: exportURL)
+        }
+    }
+
+    private static func scheduleRemoval(of directoryURL: URL) {
+        DispatchQueue.global(qos: .utility).asyncAfter(
+            deadline: .now() + retentionDuration
+        ) {
+            try? FileManager.default.removeItem(at: directoryURL)
+        }
+    }
+}
+
 @MainActor
 final class ClipboardManagerFeature: ObservableObject {
     static let shared = ClipboardManagerFeature()
@@ -65,6 +159,10 @@ final class ClipboardManagerFeature: ObservableObject {
     func start() {
         guard timer == nil else {
             return
+        }
+
+        DispatchQueue.global(qos: .utility).async {
+            ClipboardDragExportStore.removeExpired()
         }
 
         lastChangeCount = NSPasteboard.general.changeCount
@@ -163,14 +261,11 @@ final class ClipboardManagerFeature: ObservableObject {
                     visibility: .all
                 ) { completion in
                     do {
-                        let export = try Self.makeTemporaryImageExport(
+                        let export = try ClipboardDragExportStore.makeExport(
                             data: data,
                             fileName: fileName
                         )
                         completion(export.fileURL, false, nil)
-                        DispatchQueue.global(qos: .utility).asyncAfter(deadline: .now() + 60) {
-                            try? FileManager.default.removeItem(at: export.directoryURL)
-                        }
                     } catch {
                         completion(nil, false, error)
                     }
@@ -236,14 +331,12 @@ final class ClipboardManagerFeature: ObservableObject {
             }
             let pasteboardItem = Self.imagePasteboardItem(data: imageData)
             do {
-                let export = try Self.makeTemporaryImageExport(
+                let export = try ClipboardDragExportStore.makeExport(
                     data: imageData,
                     fileName: Self.imageFileName(for: item)
                 )
                 pasteboardItem.setString(export.fileURL.absoluteString, forType: .fileURL)
-                return ClipboardDragContent(writers: [pasteboardItem]) {
-                    try? FileManager.default.removeItem(at: export.directoryURL)
-                }
+                return ClipboardDragContent(writers: [pasteboardItem])
             } catch {
                 return ClipboardDragContent(writers: [pasteboardItem])
             }
@@ -786,26 +879,6 @@ final class ClipboardManagerFeature: ObservableObject {
             .replacingOccurrences(of: "/", with: "-")
             .replacingOccurrences(of: ":", with: "-")
         return "\(safeBaseName).png"
-    }
-
-    nonisolated private static func makeTemporaryImageExport(
-        data: Data,
-        fileName: String
-    ) throws -> (directoryURL: URL, fileURL: URL) {
-        let directoryURL = FileManager.default.temporaryDirectory
-            .appendingPathComponent("DroppyDrag-\(UUID().uuidString)", isDirectory: true)
-        try FileManager.default.createDirectory(
-            at: directoryURL,
-            withIntermediateDirectories: true
-        )
-        let fileURL = directoryURL.appendingPathComponent(fileName)
-        do {
-            try data.write(to: fileURL, options: .atomic)
-            return (directoryURL, fileURL)
-        } catch {
-            try? FileManager.default.removeItem(at: directoryURL)
-            throw error
-        }
     }
 
     private static func postCommandV() {

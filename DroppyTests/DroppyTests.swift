@@ -341,18 +341,26 @@ final class DroppyTests: XCTestCase {
             screenshotMonitor: ScreenshotMonitor(configuredRootURL: fixture.rootURL)
         )
 
-        let dragContent = manager.dragContent(for: item)
+        var dragContent: ClipboardDragContent? = manager.dragContent(for: item)
         let pasteboardItem = try XCTUnwrap(
-            dragContent.writers.first as? NSPasteboardItem
+            dragContent?.writers.first as? NSPasteboardItem
         )
         let fileURL = try XCTUnwrap(
             pasteboardItem.string(forType: .fileURL).flatMap(URL.init(string:))
         )
+        defer {
+            try? FileManager.default.removeItem(
+                at: fileURL.deletingLastPathComponent()
+            )
+        }
 
         XCTAssertEqual(fileURL.lastPathComponent, "Capture.png")
         XCTAssertEqual(try Data(contentsOf: fileURL), imageData)
         XCTAssertEqual(pasteboardItem.data(forType: .png), imageData)
         XCTAssertNotNil(pasteboardItem.data(forType: .tiff))
+
+        dragContent = nil
+        XCTAssertTrue(FileManager.default.fileExists(atPath: fileURL.path))
     }
 
     @MainActor
@@ -379,10 +387,48 @@ final class DroppyTests: XCTestCase {
             XCTAssertNil(error)
             XCTAssertEqual(url?.lastPathComponent, "Chat Image.png")
             XCTAssertEqual(url.flatMap { try? Data(contentsOf: $0) }, imageData)
+            if let url {
+                try? FileManager.default.removeItem(
+                    at: url.deletingLastPathComponent()
+                )
+            }
             loaded.fulfill()
         }
 
         wait(for: [loaded], timeout: 2)
+    }
+
+    func testDragExportCleanupRemovesOnlyExpiredDirectories() throws {
+        let rootURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent(
+                "DroppyDragExportTests-\(UUID().uuidString)",
+                isDirectory: true
+        )
+        defer { try? FileManager.default.removeItem(at: rootURL) }
+        let now = Date()
+        let currentExport = try ClipboardDragExportStore.makeExport(
+            data: Data("current".utf8),
+            fileName: "Current.png",
+            rootURL: rootURL,
+            now: now
+        )
+        let oldExport = try ClipboardDragExportStore.makeExport(
+            data: Data("old".utf8),
+            fileName: "Old.png",
+            rootURL: rootURL,
+            now: now.addingTimeInterval(
+                -ClipboardDragExportStore.retentionDuration - 1
+            )
+        )
+
+        ClipboardDragExportStore.removeExpired(in: rootURL, now: now)
+
+        XCTAssertFalse(
+            FileManager.default.fileExists(atPath: oldExport.directoryURL.path)
+        )
+        XCTAssertTrue(
+            FileManager.default.fileExists(atPath: currentExport.fileURL.path)
+        )
     }
 
     func testScreenshotMonitorFindsDocumentsScreenshotsFolder() throws {

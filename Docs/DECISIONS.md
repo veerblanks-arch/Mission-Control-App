@@ -35,12 +35,12 @@ Date: 2026-07-28
 ## Data and integrations
 
 - Clipboard history: seven days, searchable, pinned items retained.
-- Calendar: EventKit.
+- Calendar is out of scope; use the existing calendar app directly.
 - Media: Music and Spotify first.
 - Codex: official App Server, safe dashboard and replies first.
 - Notes: separate and local.
-- Terminal: Apple Terminal by default, configurable later.
-- Unified search excludes Calendar.
+- Terminal: embedded command runner for project scripts, with Apple Terminal
+  as the default external fallback and configurable adapters later.
 
 ## Clipboard and screenshots
 
@@ -77,6 +77,9 @@ Date: 2026-07-28
   Request Accessibility only when automatic paste is first needed; copying
   remains the fallback.
 - A completed drag closes the panel. A cancelled drag leaves it open.
+- Image and screenshot drag exports remain in Droppy's cache for one day so
+  delayed chat uploads can still read them. Clean up expired exports on launch,
+  on future exports, and after the retention interval while Droppy remains open.
 
 ## Polish
 
@@ -120,6 +123,7 @@ Date: 2026-07-28
 - Phase 2: implemented and tested in code; pending the target-Mac drag,
   multi-display, Space, and full-screen acceptance check.
 - Phase 3: accepted and committed.
-- Phase 4: implemented, code-tested, and visually verified on the target Mac.
-  A real region/window/full-screen capture remains an acceptance check after
-  Screen Recording is granted to the final app copy.
+- Phase 4: accepted and committed. Clipboard image drag exports received a
+  post-acceptance lifetime fix after a delayed Codex upload exposed premature
+  temporary-file cleanup.
+- Phase 5: next; Files, Notes, Terminal, and unified search.

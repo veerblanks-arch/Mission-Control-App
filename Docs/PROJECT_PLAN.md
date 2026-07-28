@@ -21,7 +21,7 @@ notifications, then dismisses according to the behavior of that feature.
   Adding the same path again updates its timestamp. Removing a reference never
   deletes the original file.
 - Navigation: vertical icon rail for Clipboard, Shelf, Codex, Files, Notes,
-  Calendar, and Media. Snippet and Terminal are header actions.
+  and Media. Snippet and Terminal are header actions.
 
 ## Feature decisions
 
@@ -49,13 +49,14 @@ notifications, then dismisses according to the behavior of that feature.
 - Files support Quick Look, open, drag-out, Reveal in Finder, and Copy Path.
 - Notes are separate, local, searchable, autosaved, and exportable. Deleted
   notes remain recoverable for 30 days.
-- Apple Terminal is the default terminal, with configurable adapters later.
-- Terminal opens in the current favorite folder or selected Codex project.
+- Droppy includes an embedded command runner for project scripts, streaming
+  output, and long-running jobs. Apple Terminal remains the default external
+  terminal, with configurable adapters later.
+- New command sessions start in the current favorite folder or selected Codex
+  project.
 
-### Calendar and media
+### Media
 
-- Calendar uses EventKit and the accounts already configured in macOS.
-- Calendar is excluded from unified search.
 - Media supports Music and Spotify through their local automation interfaces.
 - Private `MediaRemote` is not part of the active implementation.
 
@@ -83,7 +84,7 @@ notifications, then dismisses according to the behavior of that feature.
 3. Clipboard and Screenshots.
 4. Snippet.
 5. Files, Notes, Terminal, and unified search.
-6. Media and Calendar.
+6. Media.
 7. Codex.
 8. Polish, accessibility, performance, launch at login, settings, motion
    design, and a cohesive app-wide color theme.
@@ -93,7 +94,7 @@ local Git commit, and wait for explicit user approval before the next phase.
 
 ## Current checkpoint
 
-Phase 4 is implemented. Snippet is a compact header action: its primary camera
+Phase 4 is accepted. Snippet is a compact header action: its primary camera
 button starts region capture, while the adjacent menu offers region, window,
 and full-screen modes. Droppy dismisses its panel before invoking the native
 macOS capture service and keeps the raw result temporary.
@@ -110,12 +111,15 @@ encrypted screenshot insertion, schedules Vision OCR, and shows the existing
 confirmation. Passive screenshot discovery ignores only that generated path,
 so unrelated screenshots made while editing are not skipped.
 
-Twenty-eight automated tests pass. Target-Mac checks verified the header at the
+Thirty-two automated tests pass. Target-Mac checks verified the header at the
 real panel size, the full editor layout, live pen drawing, undo availability,
-and blur preview. The app also reached its Screen Recording permission gate
-correctly. A real region/window/full-screen capture, final save, and permission
-relaunch remain the user acceptance checks because this Mac has no development
-code-signing identity and the local debug app is ad-hoc signed.
+blur preview, capture result, and clipboard image drag behavior. Dragged image
+exports remain readable in a managed cache for one day so delayed chat uploads
+do not lose their source file; expired exports are removed automatically.
+
+Phase 5 is next. It covers Files, Notes, unified search, and an embedded command
+runner for project scripts. The runner's session layout and process-lifetime
+behavior must be confirmed before implementation.
 
 The final polish phase must include purposeful animations across feature
 transitions and contextual overlays, plus a consistent color theme. Reduced
