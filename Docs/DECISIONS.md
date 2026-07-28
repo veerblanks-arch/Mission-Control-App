@@ -25,6 +25,12 @@ Date: 2026-07-28
 - Sort newest first and deduplicate by path.
 - A small minus button removes only the reference.
 - After a drop, show confirmation briefly and close after about two seconds.
+- Persist ordinary file bookmarks plus a last-known path in a versioned JSON
+  archive under Application Support.
+- Keep unavailable references visible so they can still be inspected or
+  removed.
+- Defer promised-file imports from third-party apps until a later phase; Phase
+  2 accepts concrete file and folder URLs from Finder.
 
 ## Data and integrations
 
@@ -42,3 +48,9 @@ Date: 2026-07-28
 - Verify each phase on the target Mac.
 - Commit locally after each accepted phase.
 - Wait for explicit approval before starting the next phase.
+
+## Phase status
+
+- Phase 1: accepted and committed.
+- Phase 2: implemented and tested in code; pending the target-Mac drag,
+  multi-display, Space, and full-screen acceptance check.

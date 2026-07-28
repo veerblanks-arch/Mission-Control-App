@@ -18,6 +18,9 @@
 		100000000000000000000012 /* OverlayPanelController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000015 /* OverlayPanelController.swift */; };
 		100000000000000000000013 /* OverlayRootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000016 /* OverlayRootView.swift */; };
 		100000000000000000000014 /* PanelGeometry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000017 /* PanelGeometry.swift */; };
+		100000000000000000000015 /* DropZoneGeometry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000018 /* DropZoneGeometry.swift */; };
+		100000000000000000000016 /* ShelfFeature.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000019 /* ShelfFeature.swift */; };
+		100000000000000000000017 /* DropZoneCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20000000000000000000001A /* DropZoneCoordinator.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -45,6 +48,9 @@
 		200000000000000000000015 /* OverlayPanelController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OverlayPanelController.swift; sourceTree = "<group>"; };
 		200000000000000000000016 /* OverlayRootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OverlayRootView.swift; sourceTree = "<group>"; };
 		200000000000000000000017 /* PanelGeometry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PanelGeometry.swift; sourceTree = "<group>"; };
+		200000000000000000000018 /* DropZoneGeometry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DropZoneGeometry.swift; sourceTree = "<group>"; };
+		200000000000000000000019 /* ShelfFeature.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShelfFeature.swift; sourceTree = "<group>"; };
+		20000000000000000000001A /* DropZoneCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DropZoneCoordinator.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -104,6 +110,7 @@
 				200000000000000000000014 /* StatusItemController.swift */,
 				200000000000000000000006 /* PermissionsManager.swift */,
 				200000000000000000000017 /* PanelGeometry.swift */,
+				200000000000000000000018 /* DropZoneGeometry.swift */,
 			);
 			path = Core;
 			sourceTree = "<group>";
@@ -112,6 +119,8 @@
 			isa = PBXGroup;
 			children = (
 				700000000000000000000008 /* ClipboardStrip */,
+				700000000000000000000014 /* DropZone */,
+				700000000000000000000015 /* Shelf */,
 			);
 			path = Features;
 			sourceTree = "<group>";
@@ -122,6 +131,22 @@
 				20000000000000000000000B /* ClipboardStripFeature.swift */,
 			);
 			path = ClipboardStrip;
+			sourceTree = "<group>";
+		};
+		700000000000000000000014 /* DropZone */ = {
+			isa = PBXGroup;
+			children = (
+				20000000000000000000001A /* DropZoneCoordinator.swift */,
+			);
+			path = DropZone;
+			sourceTree = "<group>";
+		};
+		700000000000000000000015 /* Shelf */ = {
+			isa = PBXGroup;
+			children = (
+				200000000000000000000019 /* ShelfFeature.swift */,
+			);
+			path = Shelf;
 			sourceTree = "<group>";
 		};
 		700000000000000000000010 /* Storage */ = {
@@ -244,8 +269,11 @@
 				100000000000000000000011 /* StatusItemController.swift in Sources */,
 				100000000000000000000006 /* PermissionsManager.swift in Sources */,
 				100000000000000000000014 /* PanelGeometry.swift in Sources */,
+				100000000000000000000015 /* DropZoneGeometry.swift in Sources */,
 				100000000000000000000008 /* Settings.swift in Sources */,
 				10000000000000000000000B /* ClipboardStripFeature.swift in Sources */,
+				100000000000000000000016 /* ShelfFeature.swift in Sources */,
+				100000000000000000000017 /* DropZoneCoordinator.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

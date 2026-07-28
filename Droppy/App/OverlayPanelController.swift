@@ -40,7 +40,8 @@ final class OverlayPanelController: NSWindowController, NSWindowDelegate {
         panel.contentViewController = NSHostingController(
             rootView: OverlayRootView(
                 model: model,
-                clipboardManager: .shared
+                clipboardManager: .shared,
+                shelf: .shared
             )
         )
 

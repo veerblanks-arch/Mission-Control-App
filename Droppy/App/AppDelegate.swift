@@ -17,6 +17,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     )
     private let permissionsManager = PermissionsManager()
     private let clipboardManager = ClipboardManagerFeature.shared
+    private let shelf = ShelfFeature.shared
+    private lazy var dropZoneCoordinator = DropZoneCoordinator(shelf: shelf)
     private var hasCompletedStartup = false
 
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -37,11 +39,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         hasCompletedStartup = true
         clipboardManager.start()
         statusItemController.start()
+        dropZoneCoordinator.start()
 
 #if DEBUG
         if CommandLine.arguments.contains("--show-panel") {
             DispatchQueue.main.async { [weak self] in
                 self?.statusItemController.showClipboard()
+            }
+        }
+        if CommandLine.arguments.contains("--show-drop-zone") {
+            DispatchQueue.main.async { [weak self] in
+                self?.dropZoneCoordinator.showForDebug()
             }
         }
 #endif
@@ -82,6 +90,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationWillTerminate(_ notification: Notification) {
+        dropZoneCoordinator.stop()
         clipboardManager.stop()
         statusItemController.stop()
     }

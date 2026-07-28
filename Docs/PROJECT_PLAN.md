@@ -89,3 +89,16 @@ notifications, then dismisses according to the behavior of that feature.
 
 Each phase must build successfully, be tested on the target Mac, receive a
 local Git commit, and wait for explicit user approval before the next phase.
+
+## Current checkpoint
+
+Phase 2 is implemented. The app now monitors file drags without opening its
+main panel, reveals a compact receiving surface at the physical top center
+after a short hover, and stores dropped file and folder references in a
+persistent Shelf. The Shelf supports open, reveal, copy path, drag-out, missing
+item visibility, and reference-only removal.
+
+Automated coverage verifies top-center geometry, deterministic ordering,
+deduplication, persistence, missing references, and that removal leaves the
+original file untouched. Final Phase 2 acceptance still requires a slow Finder
+drag plus multi-display, Space, and full-screen checks on the target Mac.
