@@ -413,6 +413,11 @@ private struct ClipboardItemRow: View {
                     }
 
                     preview
+                        .onDrag {
+                            manager.itemProvider(for: item)
+                        } preview: {
+                            dragBadge
+                        }
 
                     VStack(alignment: .leading, spacing: 4) {
                         HStack(spacing: 6) {
@@ -538,6 +543,18 @@ private struct ClipboardItemRow: View {
         case .screenshot:
             ClipboardDragPreview(label: "screenshot")
         }
+    }
+
+    private var dragBadge: some View {
+        Text(dragPreview.label)
+            .font(.system(size: 11, weight: .semibold))
+            .padding(.horizontal, 9)
+            .frame(height: 24)
+            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 6))
+            .overlay {
+                RoundedRectangle(cornerRadius: 6)
+                    .strokeBorder(Color.primary.opacity(0.16), lineWidth: 1)
+            }
     }
 }
 

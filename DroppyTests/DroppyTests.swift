@@ -324,7 +324,7 @@ final class DroppyTests: XCTestCase {
     }
 
     @MainActor
-    func testImageDragPromisesCorrectlyNamedPNG() throws {
+    func testImageDragPublishesFileURLAndPNGData() throws {
         let fixture = try ClipboardTestFixture()
         let repository = try fixture.repository()
         let imageData = try testPNGData(width: 10, height: 6)
@@ -342,22 +342,47 @@ final class DroppyTests: XCTestCase {
         )
 
         let dragContent = manager.dragContent(for: item)
-        let provider = try XCTUnwrap(dragContent.writers.first as? NSFilePromiseProvider)
-        let delegate = try XCTUnwrap(provider.delegate)
-        XCTAssertEqual(provider.fileType, UTType.png.identifier)
-        XCTAssertEqual(
-            delegate.filePromiseProvider(provider, fileNameForType: provider.fileType),
-            "Capture.png"
+        let pasteboardItem = try XCTUnwrap(
+            dragContent.writers.first as? NSPasteboardItem
+        )
+        let fileURL = try XCTUnwrap(
+            pasteboardItem.string(forType: .fileURL).flatMap(URL.init(string:))
         )
 
-        let outputURL = fixture.rootURL.appendingPathComponent("Promised.png")
-        let writeCompleted = expectation(description: "Image file promise writes PNG")
-        delegate.filePromiseProvider(provider, writePromiseTo: outputURL) { error in
+        XCTAssertEqual(fileURL.lastPathComponent, "Capture.png")
+        XCTAssertEqual(try Data(contentsOf: fileURL), imageData)
+        XCTAssertEqual(pasteboardItem.data(forType: .png), imageData)
+        XCTAssertNotNil(pasteboardItem.data(forType: .tiff))
+    }
+
+    @MainActor
+    func testImageItemProviderLoadsChatCompatibleFileRepresentation() throws {
+        let fixture = try ClipboardTestFixture()
+        let repository = try fixture.repository()
+        let imageData = try testPNGData(width: 9, height: 7)
+        var item = clipboardItem(capturedAt: Date())
+        item.kind = .image
+        item.title = "Chat Image"
+        item.storedByteCount = try repository.savePayload(
+            .image(data: imageData, typeIdentifier: UTType.png.identifier),
+            id: item.payloadID
+        )
+        try repository.save(ClipboardArchive(items: [item]))
+        let manager = ClipboardManagerFeature(
+            repository: repository,
+            screenshotMonitor: ScreenshotMonitor(configuredRootURL: fixture.rootURL)
+        )
+        let provider = manager.itemProvider(for: item)
+        let loaded = expectation(description: "Chat-compatible image file loads")
+
+        provider.loadFileRepresentation(forTypeIdentifier: UTType.png.identifier) { url, error in
             XCTAssertNil(error)
-            writeCompleted.fulfill()
+            XCTAssertEqual(url?.lastPathComponent, "Chat Image.png")
+            XCTAssertEqual(url.flatMap { try? Data(contentsOf: $0) }, imageData)
+            loaded.fulfill()
         }
-        wait(for: [writeCompleted], timeout: 2)
-        XCTAssertEqual(try Data(contentsOf: outputURL), imageData)
+
+        wait(for: [loaded], timeout: 2)
     }
 
     func testScreenshotMonitorFindsDocumentsScreenshotsFolder() throws {

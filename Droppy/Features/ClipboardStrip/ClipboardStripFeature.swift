@@ -156,8 +156,28 @@ final class ClipboardManagerFeature: ObservableObject {
         case .image, .screenshot:
             let provider = NSItemProvider()
             if let data = payload.imageData {
+                let fileName = Self.imageFileName(for: item)
+                provider.registerFileRepresentation(
+                    forTypeIdentifier: UTType.png.identifier,
+                    fileOptions: [],
+                    visibility: .all
+                ) { completion in
+                    do {
+                        let export = try Self.makeTemporaryImageExport(
+                            data: data,
+                            fileName: fileName
+                        )
+                        completion(export.fileURL, false, nil)
+                        DispatchQueue.global(qos: .utility).asyncAfter(deadline: .now() + 60) {
+                            try? FileManager.default.removeItem(at: export.directoryURL)
+                        }
+                    } catch {
+                        completion(nil, false, error)
+                    }
+                    return nil
+                }
                 provider.registerDataRepresentation(
-                    forTypeIdentifier: payload.imageTypeIdentifier ?? UTType.png.identifier,
+                    forTypeIdentifier: UTType.png.identifier,
                     visibility: .all
                 ) { completion in
                     completion(data, nil)
@@ -214,18 +234,19 @@ final class ClipboardManagerFeature: ObservableObject {
             guard let imageData = payload.imageData else {
                 return .empty
             }
-            let delegate = ClipboardImageFilePromiseDelegate(
-                imageData: imageData,
-                fileName: Self.imageFileName(for: item)
-            )
-            let provider = NSFilePromiseProvider(
-                fileType: UTType.png.identifier,
-                delegate: delegate
-            )
-            return ClipboardDragContent(
-                writers: [provider],
-                retainedObjects: [delegate]
-            )
+            let pasteboardItem = Self.imagePasteboardItem(data: imageData)
+            do {
+                let export = try Self.makeTemporaryImageExport(
+                    data: imageData,
+                    fileName: Self.imageFileName(for: item)
+                )
+                pasteboardItem.setString(export.fileURL.absoluteString, forType: .fileURL)
+                return ClipboardDragContent(writers: [pasteboardItem]) {
+                    try? FileManager.default.removeItem(at: export.directoryURL)
+                }
+            } catch {
+                return ClipboardDragContent(writers: [pasteboardItem])
+            }
         }
     }
 
@@ -761,7 +782,30 @@ final class ClipboardManagerFeature: ObservableObject {
     private static func imageFileName(for item: ClipboardItem) -> String {
         let baseName = (item.title as NSString).deletingPathExtension
             .trimmingCharacters(in: .whitespacesAndNewlines)
-        return "\(baseName.isEmpty ? "Droppy Image" : baseName).png"
+        let safeBaseName = (baseName.isEmpty ? "Droppy Image" : baseName)
+            .replacingOccurrences(of: "/", with: "-")
+            .replacingOccurrences(of: ":", with: "-")
+        return "\(safeBaseName).png"
+    }
+
+    nonisolated private static func makeTemporaryImageExport(
+        data: Data,
+        fileName: String
+    ) throws -> (directoryURL: URL, fileURL: URL) {
+        let directoryURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent("DroppyDrag-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(
+            at: directoryURL,
+            withIntermediateDirectories: true
+        )
+        let fileURL = directoryURL.appendingPathComponent(fileName)
+        do {
+            try data.write(to: fileURL, options: .atomic)
+            return (directoryURL, fileURL)
+        } catch {
+            try? FileManager.default.removeItem(at: directoryURL)
+            throw error
+        }
     }
 
     private static func postCommandV() {
@@ -787,49 +831,17 @@ final class ClipboardDragContent {
     static let empty = ClipboardDragContent(writers: [])
 
     let writers: [NSPasteboardWriting]
-    fileprivate let retainedObjects: [AnyObject]
+    private let cleanup: (() -> Void)?
 
     init(
         writers: [NSPasteboardWriting],
-        retainedObjects: [AnyObject] = []
+        cleanup: (() -> Void)? = nil
     ) {
         self.writers = writers
-        self.retainedObjects = retainedObjects
-    }
-}
-
-private final class ClipboardImageFilePromiseDelegate: NSObject, NSFilePromiseProviderDelegate {
-    private let imageData: Data
-    private let fileName: String
-
-    init(imageData: Data, fileName: String) {
-        self.imageData = imageData
-        self.fileName = fileName
+        self.cleanup = cleanup
     }
 
-    func filePromiseProvider(
-        _ filePromiseProvider: NSFilePromiseProvider,
-        fileNameForType fileType: String
-    ) -> String {
-        fileName
-    }
-
-    nonisolated func filePromiseProvider(
-        _ filePromiseProvider: NSFilePromiseProvider,
-        writePromiseTo url: URL,
-        completionHandler: @escaping ((any Error)?) -> Void
-    ) {
-        do {
-            try imageData.write(to: url, options: .atomic)
-            completionHandler(nil)
-        } catch {
-            completionHandler(error)
-        }
-    }
-
-    func operationQueue(
-        for filePromiseProvider: NSFilePromiseProvider
-    ) -> OperationQueue {
-        .main
+    deinit {
+        cleanup?()
     }
 }
