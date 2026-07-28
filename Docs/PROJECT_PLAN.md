@@ -85,7 +85,8 @@ notifications, then dismisses according to the behavior of that feature.
 5. Files, Notes, Terminal, and unified search.
 6. Media and Calendar.
 7. Codex.
-8. Polish, accessibility, performance, launch at login, and settings.
+8. Polish, accessibility, performance, launch at login, settings, motion
+   design, and a cohesive app-wide color theme.
 
 Each phase must build successfully, be tested on the target Mac, receive a
 local Git commit, and wait for explicit user approval before the next phase.
@@ -102,3 +103,7 @@ Automated coverage verifies top-center geometry, deterministic ordering,
 deduplication, persistence, missing references, and that removal leaves the
 original file untouched. Final Phase 2 acceptance still requires a slow Finder
 drag plus multi-display, Space, and full-screen checks on the target Mac.
+
+The final polish phase must include purposeful animations across feature
+transitions and contextual overlays, plus a consistent color theme. Reduced
+Motion must retain clear state changes without movement-heavy effects.

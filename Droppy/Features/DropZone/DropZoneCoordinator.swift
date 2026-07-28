@@ -2,6 +2,8 @@ import AppKit
 import SwiftUI
 
 final class DropZoneCoordinator {
+    private static let releaseGracePeriod: TimeInterval = 0.25
+
     private enum State {
         case idle
         case armed(screen: NSScreen, generation: Int)
@@ -69,10 +71,14 @@ final class DropZoneCoordinator {
 
     private func handle(_ event: NSEvent) {
         if event.type == .leftMouseUp {
-            if case .success = state {
+            switch state {
+            case .armed, .ready:
+                scheduleDismissal(after: Self.releaseGracePeriod)
+            case .success:
                 return
+            case .idle:
+                reset()
             }
-            reset()
             return
         }
 

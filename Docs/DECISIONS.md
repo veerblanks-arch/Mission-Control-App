@@ -42,6 +42,14 @@ Date: 2026-07-28
 - Terminal: Apple Terminal by default, configurable later.
 - Unified search excludes Calendar.
 
+## Polish
+
+- Defer the full aesthetic pass until Phase 8.
+- Add purposeful animations for panel navigation, contextual overlays, and
+  success or attention states.
+- Establish a cohesive app-wide color theme while preserving system contrast
+  and Reduced Motion behavior.
+
 ## Workflow
 
 - Complete one phase at a time.
