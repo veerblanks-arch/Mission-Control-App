@@ -485,6 +485,9 @@ final class TerminalSessionController: NSObject, ObservableObject,
 @MainActor
 final class TerminalFeature: ObservableObject {
     static let shared = TerminalFeature()
+    nonisolated static var defaultDirectoryURL: URL {
+        FileManager.default.homeDirectoryForCurrentUser.standardizedFileURL
+    }
 
     @Published private(set) var sessions: [TerminalSessionController] = []
     @Published var selectedSessionID: UUID?
@@ -510,8 +513,7 @@ final class TerminalFeature: ObservableObject {
 
     @discardableResult
     func newSession(
-        currentDirectoryURL: URL = FileManager.default
-            .homeDirectoryForCurrentUser
+        currentDirectoryURL: URL = TerminalFeature.defaultDirectoryURL
     ) -> TerminalSessionController {
         let session = TerminalSessionController(
             currentDirectoryURL: currentDirectoryURL

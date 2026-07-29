@@ -34,6 +34,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
+        ApplicationMenu.install(in: NSApp)
 
         if !isRunningTests && terminateCurrentInstanceIfAnotherIsRunning() {
             return
@@ -172,5 +173,70 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     @objc private func quit() {
         NSApp.terminate(nil)
+    }
+}
+
+enum ApplicationMenu {
+    static func install(in application: NSApplication) {
+        application.mainMenu = make()
+    }
+
+    static func make() -> NSMenu {
+        let mainMenu = NSMenu()
+
+        let applicationItem = NSMenuItem(title: "Droppy", action: nil, keyEquivalent: "")
+        let applicationMenu = NSMenu(title: "Droppy")
+        applicationMenu.addItem(
+            withTitle: "Quit Droppy",
+            action: #selector(NSApplication.terminate(_:)),
+            keyEquivalent: "q"
+        )
+        applicationItem.submenu = applicationMenu
+        mainMenu.addItem(applicationItem)
+
+        let editItem = NSMenuItem(title: "Edit", action: nil, keyEquivalent: "")
+        editItem.submenu = makeEditMenu()
+        mainMenu.addItem(editItem)
+
+        return mainMenu
+    }
+
+    private static func makeEditMenu() -> NSMenu {
+        let menu = NSMenu(title: "Edit")
+        menu.addItem(
+            withTitle: "Undo",
+            action: Selector(("undo:")),
+            keyEquivalent: "z"
+        )
+
+        let redo = menu.addItem(
+            withTitle: "Redo",
+            action: Selector(("redo:")),
+            keyEquivalent: "z"
+        )
+        redo.keyEquivalentModifierMask = [.command, .shift]
+
+        menu.addItem(.separator())
+        menu.addItem(
+            withTitle: "Cut",
+            action: #selector(NSText.cut(_:)),
+            keyEquivalent: "x"
+        )
+        menu.addItem(
+            withTitle: "Copy",
+            action: #selector(NSText.copy(_:)),
+            keyEquivalent: "c"
+        )
+        menu.addItem(
+            withTitle: "Paste",
+            action: #selector(NSText.paste(_:)),
+            keyEquivalent: "v"
+        )
+        menu.addItem(
+            withTitle: "Select All",
+            action: #selector(NSText.selectAll(_:)),
+            keyEquivalent: "a"
+        )
+        return menu
     }
 }

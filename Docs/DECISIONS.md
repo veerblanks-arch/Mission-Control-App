@@ -126,5 +126,5 @@ Date: 2026-07-28
 - Phase 4: accepted and committed. Clipboard image drag exports received a
   post-acceptance lifetime fix after a delayed Codex upload exposed premature
   temporary-file cleanup.
-- Phase 5: implemented with 51 passing tests; awaiting target-Mac interaction
+- Phase 5: implemented with 53 passing tests; awaiting target-Mac interaction
   acceptance before the local phase commit is treated as accepted.

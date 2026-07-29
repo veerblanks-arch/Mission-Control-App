@@ -5,6 +5,40 @@ import XCTest
 @testable import Droppy
 
 final class DroppyTests: XCTestCase {
+    func testApplicationMenuProvidesStandardEditingShortcuts() {
+        let menu = ApplicationMenu.make()
+        let editMenu = menu.items
+            .first { $0.title == "Edit" }?
+            .submenu
+
+        let expectedActions = [
+            "x": "cut:",
+            "c": "copy:",
+            "v": "paste:",
+            "a": "selectAll:"
+        ]
+        for (keyEquivalent, action) in expectedActions {
+            let item = editMenu?.items.first {
+                $0.keyEquivalent == keyEquivalent
+            }
+            XCTAssertEqual(
+                item?.action.map(NSStringFromSelector),
+                action
+            )
+            XCTAssertEqual(
+                item?.keyEquivalentModifierMask,
+                .command
+            )
+        }
+    }
+
+    func testTerminalDefaultsToTheUserHomeDirectory() {
+        XCTAssertEqual(
+            TerminalFeature.defaultDirectoryURL,
+            FileManager.default.homeDirectoryForCurrentUser.standardizedFileURL
+        )
+    }
+
     func testPanelCentersBelowAnchor() {
         let frame = PanelGeometry.anchoredFrame(
             size: NSSize(width: 420, height: 560),

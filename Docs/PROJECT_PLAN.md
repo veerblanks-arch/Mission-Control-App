@@ -111,16 +111,22 @@ rather than treated as empty.
 Terminal is a compact header action backed by SwiftTerm 1.11.2 and a real PTY.
 It supports multiple retained zsh sessions, long-running commands, ANSI output,
 Control-C, clear, restart, selectable working folders, and an Apple Terminal
-fallback. Closing the overlay does not stop its sessions; quitting Droppy warns
-before stopping running shells and their child processes. Restart and quit wait
-for the old process tree to exit. A second normal app launch leaves the existing
-instance and its sessions untouched.
+fallback. Fresh sessions start in the user's home folder, while new tabs created
+from an existing session retain that session's working folder. Closing the
+overlay does not stop its sessions; quitting Droppy warns before stopping running
+shells and their child processes. Restart and quit wait for the old process tree
+to exit. A second normal app launch leaves the existing instance and its sessions
+untouched.
+
+Droppy's accessory-app menu includes the standard macOS editing commands so
+keyboard cut, copy, paste, undo, redo, and Select All work in Notes and other
+text fields.
 
 Unified search is a separate header action that groups ranked Clipboard, Shelf,
 Files, and Notes results and opens the correct destination. Empty queries do no
 work, and stale file searches are cancelled.
 
-Fifty-one automated tests pass. The canonical build is
+Fifty-three automated tests pass. The canonical build is
 `Builds/Droppy.app`; its live process path was verified after replacing the
 previous running copy. Phase 5 still needs the target-Mac interaction acceptance
 check before it is considered accepted.

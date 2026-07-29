@@ -71,7 +71,7 @@ struct OverlayRootView: View {
         } else if model.isTerminalPresented {
             TerminalFeatureView(
                 feature: terminal,
-                defaultDirectoryURL: fileFinder.selectedDirectoryURL
+                defaultDirectoryURL: TerminalFeature.defaultDirectoryURL
             )
         } else {
             switch model.selectedFeature {
@@ -164,7 +164,7 @@ struct OverlayRootView: View {
                     model.closeTemporarySurfaces()
                 } else {
                     terminal.ensureSession(
-                        currentDirectoryURL: fileFinder.selectedDirectoryURL
+                        currentDirectoryURL: TerminalFeature.defaultDirectoryURL
                     )
                     model.showTerminal()
                 }
