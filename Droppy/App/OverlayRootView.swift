@@ -5,7 +5,12 @@ struct OverlayRootView: View {
     @ObservedObject var model: OverlayPanelModel
     @ObservedObject var clipboardManager: ClipboardManagerFeature
     @ObservedObject var shelf: ShelfFeature
+    @ObservedObject var fileFinder: FileFinderFeature
+    @ObservedObject var notes: NotesFeature
+    @ObservedObject var terminal: TerminalFeature
+    @ObservedObject var unifiedSearch: UnifiedSearchFeature
     @State private var clipboardSearchText = ""
+    @FocusState private var isSearchFieldFocused: Bool
 
     var body: some View {
         HStack(spacing: 0) {
@@ -29,18 +34,59 @@ struct OverlayRootView: View {
             RoundedRectangle(cornerRadius: 10, style: .continuous)
                 .strokeBorder(.white.opacity(0.16), lineWidth: 1)
         }
+        .onChange(of: model.isSearchPresented) { _, isPresented in
+            if isPresented {
+                unifiedSearch.refresh()
+                DispatchQueue.main.async {
+                    isSearchFieldFocused = true
+                }
+            } else {
+                isSearchFieldFocused = false
+            }
+        }
+        .onChange(of: clipboardManager.items.map(\.id)) {
+            refreshUnifiedSearch()
+        }
+        .onChange(of: shelf.items.map(\.id)) {
+            refreshUnifiedSearch()
+        }
+        .onChange(of: notes.notes.map(\.id)) {
+            refreshUnifiedSearch()
+        }
+        .onChange(of: fileFinder.selectedFavoriteID) {
+            refreshUnifiedSearch()
+        }
     }
 
     @ViewBuilder
     private var featureContent: some View {
-        switch model.selectedFeature {
-        case .clipboard:
-            ClipboardManagerView(
-                manager: clipboardManager,
-                searchText: $clipboardSearchText
+        if model.isSearchPresented {
+            UnifiedSearchView(
+                feature: unifiedSearch,
+                model: model,
+                clipboard: clipboardManager,
+                shelf: shelf,
+                notes: notes
             )
-        case .shelf:
-            ShelfView(shelf: shelf)
+        } else if model.isTerminalPresented {
+            TerminalFeatureView(
+                feature: terminal,
+                defaultDirectoryURL: fileFinder.selectedDirectoryURL
+            )
+        } else {
+            switch model.selectedFeature {
+            case .clipboard:
+                ClipboardManagerView(
+                    manager: clipboardManager,
+                    searchText: $clipboardSearchText
+                )
+            case .shelf:
+                ShelfView(shelf: shelf)
+            case .files:
+                FileFinderView(feature: fileFinder)
+            case .notes:
+                NotesView(feature: notes)
+            }
         }
     }
 
@@ -48,14 +94,16 @@ struct OverlayRootView: View {
         VStack(spacing: 8) {
             ForEach(OverlayFeature.allCases) { feature in
                 Button {
-                    model.selectedFeature = feature
+                    model.showFeature(feature)
                 } label: {
                     Image(systemName: feature.symbolName)
                         .font(.system(size: 16, weight: .semibold))
                         .frame(width: 34, height: 34)
-                        .foregroundStyle(model.selectedFeature == feature ? Color.accentColor : .secondary)
+                        .foregroundStyle(
+                            isSelected(feature) ? Color.accentColor : .secondary
+                        )
                         .background(
-                            model.selectedFeature == feature
+                            isSelected(feature)
                                 ? Color.accentColor.opacity(0.14)
                                 : Color.clear,
                             in: RoundedRectangle(cornerRadius: 7)
@@ -73,19 +121,63 @@ struct OverlayRootView: View {
 
     private var header: some View {
         HStack(spacing: 12) {
-            Image(systemName: model.selectedFeature.symbolName)
+            Image(systemName: model.displayedSymbolName)
                 .font(.system(size: 20, weight: .semibold))
                 .foregroundStyle(.tint)
 
-            VStack(alignment: .leading, spacing: 2) {
-                Text(model.selectedFeature.title)
-                    .font(.system(size: 18, weight: .semibold))
-                Text(model.selectedFeature.subtitle)
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundStyle(.secondary)
+            if model.isSearchPresented {
+                TextField("Search Droppy", text: $unifiedSearch.query)
+                    .textFieldStyle(.plain)
+                    .font(.system(size: 16, weight: .semibold))
+                    .focused($isSearchFieldFocused)
+            } else {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(model.displayedTitle)
+                        .font(.system(size: 18, weight: .semibold))
+                    Text(model.displayedSubtitle)
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundStyle(.secondary)
+                }
             }
 
             Spacer()
+
+            Button {
+                if model.isSearchPresented {
+                    unifiedSearch.clear()
+                    model.closeTemporarySurfaces()
+                } else {
+                    model.showSearch()
+                }
+            } label: {
+                Image(systemName: model.isSearchPresented
+                    ? "xmark"
+                    : "magnifyingglass")
+                    .font(.system(size: 14, weight: .semibold))
+                    .frame(width: 30, height: 30)
+            }
+            .buttonStyle(.plain)
+            .help(model.isSearchPresented ? "Close search" : "Search Droppy")
+
+            Button {
+                if model.isTerminalPresented {
+                    model.closeTemporarySurfaces()
+                } else {
+                    terminal.ensureSession(
+                        currentDirectoryURL: fileFinder.selectedDirectoryURL
+                    )
+                    model.showTerminal()
+                }
+            } label: {
+                Image(systemName: "terminal")
+                    .font(.system(size: 14, weight: .semibold))
+                    .frame(width: 30, height: 30)
+                    .foregroundStyle(
+                        model.isTerminalPresented ? Color.accentColor : .primary
+                    )
+            }
+            .buttonStyle(.plain)
+            .help(model.isTerminalPresented ? "Close terminal" : "Open terminal")
 
             HStack(spacing: 0) {
                 Button {
@@ -120,6 +212,19 @@ struct OverlayRootView: View {
         .padding(.horizontal, 18)
         .padding(.top, 18)
         .padding(.bottom, 16)
+    }
+
+    private func isSelected(_ feature: OverlayFeature) -> Bool {
+        !model.isSearchPresented
+            && !model.isTerminalPresented
+            && model.selectedFeature == feature
+    }
+
+    private func refreshUnifiedSearch() {
+        guard model.isSearchPresented else {
+            return
+        }
+        unifiedSearch.refresh()
     }
 }
 
@@ -258,6 +363,8 @@ private struct ShelfItemRow: View {
 enum OverlayFeature: String, Identifiable, CaseIterable {
     case clipboard
     case shelf
+    case files
+    case notes
 
     var id: String { rawValue }
 
@@ -267,6 +374,10 @@ enum OverlayFeature: String, Identifiable, CaseIterable {
             return "Clipboard"
         case .shelf:
             return "Shelf"
+        case .files:
+            return "Files"
+        case .notes:
+            return "Notes"
         }
     }
 
@@ -276,6 +387,10 @@ enum OverlayFeature: String, Identifiable, CaseIterable {
             return "doc.on.clipboard"
         case .shelf:
             return "tray"
+        case .files:
+            return "folder"
+        case .notes:
+            return "note.text"
         }
     }
 
@@ -285,6 +400,10 @@ enum OverlayFeature: String, Identifiable, CaseIterable {
             return "Clipboard history"
         case .shelf:
             return "Persistent file references"
+        case .files:
+            return "Favorite folders"
+        case .notes:
+            return "Local quick notes"
         }
     }
 }

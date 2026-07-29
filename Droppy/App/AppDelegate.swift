@@ -19,6 +19,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let permissionsManager = PermissionsManager()
     private let clipboardManager = ClipboardManagerFeature.shared
     private let shelf = ShelfFeature.shared
+    private let terminal = TerminalFeature.shared
+    private let notes = NotesFeature.shared
     private lazy var dropZoneCoordinator = DropZoneCoordinator(shelf: shelf)
     private lazy var snippetCaptureCoordinator = SnippetCaptureCoordinator(
         clipboardManager: clipboardManager,
@@ -33,7 +35,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
 
-        if terminateOtherRunningInstancesIfNeeded() {
+        if !isRunningTests && terminateCurrentInstanceIfAnotherIsRunning() {
             return
         }
 
@@ -83,7 +85,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
-    private func terminateOtherRunningInstancesIfNeeded() -> Bool {
+    private var isRunningTests: Bool {
+        let environment = ProcessInfo.processInfo.environment
+        return environment["XCTestBundlePath"] != nil
+            || environment["XCTestSessionIdentifier"] != nil
+            || environment["XCTestBundleInjectPath"] != nil
+            || environment["XCTestConfigurationFilePath"] != nil
+            || NSClassFromString("XCTestCase") != nil
+    }
+
+    private func terminateCurrentInstanceIfAnotherIsRunning() -> Bool {
         guard let bundleIdentifier = Bundle.main.bundleIdentifier else {
             return false
         }
@@ -92,28 +103,62 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let otherInstances = NSRunningApplication.runningApplications(withBundleIdentifier: bundleIdentifier)
             .filter { $0.processIdentifier != currentProcessIdentifier }
 
-        guard !otherInstances.isEmpty else {
+        guard let existingInstance = otherInstances.first else {
             return false
         }
 
-        otherInstances.forEach { app in
-            if !app.terminate() {
-                app.forceTerminate()
-            }
-        }
-
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) { [weak self] in
-            let remainingInstances = NSRunningApplication.runningApplications(withBundleIdentifier: bundleIdentifier)
-                .filter { $0.processIdentifier != currentProcessIdentifier }
-
-            remainingInstances.forEach { $0.forceTerminate() }
-            self?.completeStartup()
-        }
-
+        existingInstance.activate()
+        NSApp.terminate(nil)
         return true
     }
 
+    func applicationShouldTerminate(
+        _ sender: NSApplication
+    ) -> NSApplication.TerminateReply {
+        guard notes.flushPendingSave() || confirmQuitWithoutSavingNotes() else {
+            return .terminateCancel
+        }
+        guard terminal.hasRunningSessions else {
+            return .terminateNow
+        }
+
+        let alert = NSAlert()
+        alert.messageText = "Terminal sessions are still running"
+        alert.informativeText =
+            "Quitting Droppy will stop every shell and command running inside it."
+        alert.addButton(withTitle: "Quit and Stop Sessions")
+        alert.addButton(withTitle: "Cancel")
+
+        guard alert.runModal() == .alertFirstButtonReturn else {
+            return .terminateCancel
+        }
+        terminal.stopAll { stopped in
+            if !stopped {
+                let alert = NSAlert()
+                alert.messageText = "A terminal process could not be stopped"
+                alert.informativeText =
+                    "Droppy cancelled quitting so the process is not left behind."
+                alert.addButton(withTitle: "OK")
+                alert.runModal()
+            }
+            NSApp.reply(toApplicationShouldTerminate: stopped)
+        }
+        return .terminateLater
+    }
+
+    private func confirmQuitWithoutSavingNotes() -> Bool {
+        let alert = NSAlert()
+        alert.messageText = "Your notes could not be saved"
+        alert.informativeText =
+            "Cancel quitting to keep your unsaved notes open, then try again."
+        alert.addButton(withTitle: "Cancel Quit")
+        alert.addButton(withTitle: "Quit Without Saving")
+        return alert.runModal() == .alertSecondButtonReturn
+    }
+
     func applicationWillTerminate(_ notification: Notification) {
+        notes.flushPendingSave()
+        terminal.stopAll()
         dropZoneCoordinator.stop()
         clipboardManager.stop()
         statusItemController.stop()

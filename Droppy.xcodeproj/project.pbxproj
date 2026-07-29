@@ -32,6 +32,11 @@
 		100000000000000000000020 /* SnippetModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000023 /* SnippetModels.swift */; };
 		100000000000000000000021 /* SnippetEditor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000024 /* SnippetEditor.swift */; };
 		100000000000000000000022 /* SnippetCaptureCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000025 /* SnippetCaptureCoordinator.swift */; };
+		100000000000000000000023 /* FileFinderFeature.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000026 /* FileFinderFeature.swift */; };
+		100000000000000000000024 /* NotesFeature.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000027 /* NotesFeature.swift */; };
+		100000000000000000000025 /* TerminalFeature.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000028 /* TerminalFeature.swift */; };
+		100000000000000000000026 /* UnifiedSearchFeature.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000029 /* UnifiedSearchFeature.swift */; };
+		100000000000000000000027 /* SwiftTerm in Frameworks */ = {isa = PBXBuildFile; productRef = A000000000000000000000002 /* SwiftTerm */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -73,6 +78,10 @@
 		200000000000000000000023 /* SnippetModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SnippetModels.swift; sourceTree = "<group>"; };
 		200000000000000000000024 /* SnippetEditor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SnippetEditor.swift; sourceTree = "<group>"; };
 		200000000000000000000025 /* SnippetCaptureCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SnippetCaptureCoordinator.swift; sourceTree = "<group>"; };
+		200000000000000000000026 /* FileFinderFeature.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileFinderFeature.swift; sourceTree = "<group>"; };
+		200000000000000000000027 /* NotesFeature.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotesFeature.swift; sourceTree = "<group>"; };
+		200000000000000000000028 /* TerminalFeature.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TerminalFeature.swift; sourceTree = "<group>"; };
+		200000000000000000000029 /* UnifiedSearchFeature.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UnifiedSearchFeature.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -80,6 +89,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				100000000000000000000027 /* SwiftTerm in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -144,6 +154,10 @@
 				700000000000000000000014 /* DropZone */,
 				700000000000000000000015 /* Shelf */,
 				700000000000000000000016 /* Snippet */,
+				700000000000000000000017 /* Files */,
+				700000000000000000000018 /* Notes */,
+				700000000000000000000019 /* Terminal */,
+				70000000000000000000001A /* Search */,
 			);
 			path = Features;
 			sourceTree = "<group>";
@@ -188,6 +202,38 @@
 				200000000000000000000025 /* SnippetCaptureCoordinator.swift */,
 			);
 			path = Snippet;
+			sourceTree = "<group>";
+		};
+		700000000000000000000017 /* Files */ = {
+			isa = PBXGroup;
+			children = (
+				200000000000000000000026 /* FileFinderFeature.swift */,
+			);
+			path = Files;
+			sourceTree = "<group>";
+		};
+		700000000000000000000018 /* Notes */ = {
+			isa = PBXGroup;
+			children = (
+				200000000000000000000027 /* NotesFeature.swift */,
+			);
+			path = Notes;
+			sourceTree = "<group>";
+		};
+		700000000000000000000019 /* Terminal */ = {
+			isa = PBXGroup;
+			children = (
+				200000000000000000000028 /* TerminalFeature.swift */,
+			);
+			path = Terminal;
+			sourceTree = "<group>";
+		};
+		70000000000000000000001A /* Search */ = {
+			isa = PBXGroup;
+			children = (
+				200000000000000000000029 /* UnifiedSearchFeature.swift */,
+			);
+			path = Search;
 			sourceTree = "<group>";
 		};
 		700000000000000000000010 /* Storage */ = {
@@ -238,6 +284,9 @@
 			dependencies = (
 			);
 			name = Droppy;
+			packageProductDependencies = (
+				A000000000000000000000002 /* SwiftTerm */,
+			);
 			productName = Droppy;
 			productReference = 200000000000000000000012 /* Droppy.app */;
 			productType = "com.apple.product-type.application";
@@ -288,6 +337,9 @@
 			);
 			mainGroup = 700000000000000000000001;
 			productRefGroup = 700000000000000000000013 /* Products */;
+			packageReferences = (
+				A000000000000000000000001 /* XCRemoteSwiftPackageReference "SwiftTerm" */,
+			);
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
@@ -326,6 +378,10 @@
 				100000000000000000000020 /* SnippetModels.swift in Sources */,
 				100000000000000000000021 /* SnippetEditor.swift in Sources */,
 				100000000000000000000022 /* SnippetCaptureCoordinator.swift in Sources */,
+				100000000000000000000023 /* FileFinderFeature.swift in Sources */,
+				100000000000000000000024 /* NotesFeature.swift in Sources */,
+				100000000000000000000025 /* TerminalFeature.swift in Sources */,
+				100000000000000000000026 /* UnifiedSearchFeature.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -346,6 +402,25 @@
 			targetProxy = 300000000000000000000001 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		A000000000000000000000001 /* XCRemoteSwiftPackageReference "SwiftTerm" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/migueldeicaza/SwiftTerm";
+			requirement = {
+				kind = exactVersion;
+				version = 1.11.2;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		A000000000000000000000002 /* SwiftTerm */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = A000000000000000000000001 /* XCRemoteSwiftPackageReference "SwiftTerm" */;
+			productName = SwiftTerm;
+		};
+/* End XCSwiftPackageProductDependency section */
 
 /* Begin XCBuildConfiguration section */
 		900000000000000000000002 /* Debug */ = {

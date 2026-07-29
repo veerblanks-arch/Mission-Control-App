@@ -8,6 +8,10 @@ private final class DroppyPanel: NSPanel {
 
 final class OverlayPanelController: NSWindowController, NSWindowDelegate {
     private let model = OverlayPanelModel()
+    private let fileFinder = FileFinderFeature.shared
+    private let notes = NotesFeature.shared
+    private let terminal = TerminalFeature.shared
+    private let unifiedSearch: UnifiedSearchFeature
     private weak var anchorButton: NSStatusBarButton?
     private var globalMouseMonitor: Any?
     private var localMouseMonitor: Any?
@@ -15,6 +19,13 @@ final class OverlayPanelController: NSWindowController, NSWindowDelegate {
     private var screenObserver: NSObjectProtocol?
 
     init() {
+        let search = UnifiedSearchFeature(
+            clipboard: .shared,
+            shelf: .shared,
+            files: fileFinder,
+            notes: notes
+        )
+        unifiedSearch = search
         let initialSize = Settings.shared.panelSize
         let panel = DroppyPanel(
             contentRect: NSRect(origin: .zero, size: initialSize),
@@ -41,7 +52,11 @@ final class OverlayPanelController: NSWindowController, NSWindowDelegate {
             rootView: OverlayRootView(
                 model: model,
                 clipboardManager: .shared,
-                shelf: .shared
+                shelf: .shared,
+                fileFinder: fileFinder,
+                notes: notes,
+                terminal: terminal,
+                unifiedSearch: search
             )
         )
 
@@ -94,7 +109,7 @@ final class OverlayPanelController: NSWindowController, NSWindowDelegate {
         relativeTo statusButton: NSStatusBarButton,
         focusedItemID: UUID? = nil
     ) {
-        model.selectedFeature = .clipboard
+        model.showFeature(.clipboard)
         if let focusedItemID {
             ClipboardManagerFeature.shared.focus(focusedItemID)
         }
@@ -184,6 +199,9 @@ final class OverlayPanelController: NSWindowController, NSWindowDelegate {
                 return event
             }
 
+            if self?.model.isTerminalPresented == true {
+                return event
+            }
             self?.closePanel()
             return nil
         }
@@ -220,5 +238,57 @@ final class OverlayPanelController: NSWindowController, NSWindowDelegate {
 
 final class OverlayPanelModel: ObservableObject {
     @Published var selectedFeature: OverlayFeature = .clipboard
+    @Published private(set) var isTerminalPresented = false
+    @Published private(set) var isSearchPresented = false
     var onCaptureSnippet: ((SnippetCaptureMode) -> Void)?
+
+    func showFeature(_ feature: OverlayFeature) {
+        selectedFeature = feature
+        closeTemporarySurfaces()
+    }
+
+    func showTerminal() {
+        isSearchPresented = false
+        isTerminalPresented = true
+    }
+
+    func showSearch() {
+        isTerminalPresented = false
+        isSearchPresented = true
+    }
+
+    func closeTemporarySurfaces() {
+        isTerminalPresented = false
+        isSearchPresented = false
+    }
+
+    var displayedTitle: String {
+        if isSearchPresented {
+            return "Search"
+        }
+        if isTerminalPresented {
+            return "Terminal"
+        }
+        return selectedFeature.title
+    }
+
+    var displayedSymbolName: String {
+        if isSearchPresented {
+            return "magnifyingglass"
+        }
+        if isTerminalPresented {
+            return "terminal"
+        }
+        return selectedFeature.symbolName
+    }
+
+    var displayedSubtitle: String {
+        if isSearchPresented {
+            return "Across Droppy"
+        }
+        if isTerminalPresented {
+            return "Retained shell sessions"
+        }
+        return selectedFeature.subtitle
+    }
 }

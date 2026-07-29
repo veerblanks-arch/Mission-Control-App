@@ -689,6 +689,524 @@ final class DroppyTests: XCTestCase {
         XCTAssertEqual(notificationCount, 2)
     }
 
+    func testFileFinderScannerSearchesRecursivelyAndSkipsHiddenItems() throws {
+        let fixture = try PhaseFiveTestFixture()
+        let nested = try fixture.createFolder(named: "Projects/Nested")
+        try fixture.createFile(named: "Projects/Nested/dashboard-listener.sh")
+        try fixture.createFile(named: "Projects/.private-listener.sh")
+        try fixture.createFile(named: "unrelated.txt")
+
+        let results = FileFinderScanner.scan(
+            rootURL: fixture.rootURL,
+            query: "listener"
+        )
+
+        XCTAssertEqual(results.map(\.displayName), ["dashboard-listener.sh"])
+        XCTAssertEqual(results.first?.parentPath, nested.path)
+    }
+
+    func testFileFinderScannerHonorsResultLimitAndCancellation() throws {
+        let fixture = try PhaseFiveTestFixture()
+        for index in 0..<8 {
+            try fixture.createFile(named: "match-\(index).txt")
+        }
+
+        XCTAssertEqual(
+            FileFinderScanner.scan(
+                rootURL: fixture.rootURL,
+                query: "match",
+                maximumResults: 3
+            ).count,
+            3
+        )
+        XCTAssertTrue(
+            FileFinderScanner.scan(
+                rootURL: fixture.rootURL,
+                query: "match",
+                isCancelled: { true }
+            ).isEmpty
+        )
+    }
+
+    @MainActor
+    func testFileFavoritesPersistAcrossRelaunch() throws {
+        let fixture = try PhaseFiveTestFixture()
+        let first = try fixture.createFolder(named: "First")
+        let second = try fixture.createFolder(named: "Second")
+        let storeURL = fixture.rootURL.appendingPathComponent("Favorites.json")
+        let feature = FileFinderFeature(
+            store: FileFinderStore(fileURL: storeURL),
+            defaultFavorites: [first]
+        )
+
+        feature.addFavorite(second)
+        let reloaded = FileFinderFeature(
+            store: FileFinderStore(fileURL: storeURL),
+            defaultFavorites: []
+        )
+
+        XCTAssertEqual(
+            Set(reloaded.favorites.map(\.lastKnownPath)),
+            Set([first.path, second.path])
+        )
+        XCTAssertEqual(reloaded.selectedDirectoryURL.path, second.path)
+    }
+
+    func testCorruptFileFavoritesAreNotOverwritten() throws {
+        let fixture = try PhaseFiveTestFixture()
+        let storeURL = fixture.rootURL.appendingPathComponent("Favorites.json")
+        let original = Data("{not-json".utf8)
+        try original.write(to: storeURL)
+        let store = FileFinderStore(fileURL: storeURL)
+
+        guard case .failed = store.load() else {
+            return XCTFail("Expected a failed favorites load")
+        }
+        XCTAssertFalse(store.save(FileFinderArchive()))
+        XCTAssertEqual(try Data(contentsOf: storeURL), original)
+    }
+
+    func testFavoriteBookmarkRefreshesAfterFolderMoves() throws {
+        let fixture = try PhaseFiveTestFixture()
+        let originalURL = try fixture.createFolder(named: "Original")
+        let movedURL = fixture.rootURL.appendingPathComponent(
+            "Moved",
+            isDirectory: true
+        )
+        var favorite = FavoriteFolder(url: originalURL)
+
+        try FileManager.default.moveItem(at: originalURL, to: movedURL)
+
+        XCTAssertTrue(favorite.refreshResolvedReference())
+        XCTAssertEqual(
+            favorite.lastKnownPath,
+            movedURL.standardizedFileURL.path
+        )
+        XCTAssertEqual(
+            favorite.resolvedURL.standardizedFileURL.path,
+            movedURL.standardizedFileURL.path
+        )
+    }
+
+    @MainActor
+    func testNotesAutosaveAndReload() throws {
+        let fixture = try PhaseFiveTestFixture()
+        let storeURL = fixture.rootURL.appendingPathComponent("Notes.json")
+        let feature = NotesFeature(store: NotesStore(fileURL: storeURL))
+
+        feature.createNote(at: Date(timeIntervalSince1970: 100))
+        feature.updateSelectedTitle(
+            "Dashboard commands",
+            at: Date(timeIntervalSince1970: 110)
+        )
+        feature.updateSelectedBody(
+            "./generator.sh\n./listener.sh",
+            at: Date(timeIntervalSince1970: 120)
+        )
+        XCTAssertTrue(feature.flushPendingSave())
+        let reloaded = NotesFeature(store: NotesStore(fileURL: storeURL))
+
+        XCTAssertEqual(reloaded.activeNotes.count, 1)
+        XCTAssertEqual(reloaded.activeNotes.first?.title, "Dashboard commands")
+        XCTAssertEqual(
+            reloaded.activeNotes.first?.body,
+            "./generator.sh\n./listener.sh"
+        )
+    }
+
+    @MainActor
+    func testNotesTrashPrunesAfterThirtyDays() throws {
+        let fixture = try PhaseFiveTestFixture()
+        let storeURL = fixture.rootURL.appendingPathComponent("Notes.json")
+        let deletedAt = Date(timeIntervalSince1970: 1_000)
+        let expired = DroppyNote(
+            title: "Expired",
+            createdAt: deletedAt,
+            deletedAt: deletedAt
+        )
+        let recent = DroppyNote(
+            title: "Recent",
+            createdAt: deletedAt,
+            deletedAt: deletedAt.addingTimeInterval(10)
+        )
+        XCTAssertTrue(
+            NotesStore(fileURL: storeURL).save(
+                NotesArchive(notes: [expired, recent])
+            )
+        )
+
+        let now = deletedAt.addingTimeInterval(NotesFeature.trashLifetime + 5)
+        let feature = NotesFeature(
+            store: NotesStore(fileURL: storeURL),
+            now: now
+        )
+
+        XCTAssertEqual(feature.trashedNotes.map(\.title), ["Recent"])
+    }
+
+    @MainActor
+    func testNotesSearchSelectsAVisibleResult() throws {
+        let fixture = try PhaseFiveTestFixture()
+        let feature = NotesFeature(
+            store: NotesStore(
+                fileURL: fixture.rootURL.appendingPathComponent("Notes.json")
+            )
+        )
+        let first = feature.createNote()
+        feature.updateSelectedTitle("Generator")
+        feature.createNote()
+        feature.updateSelectedTitle("Listener")
+
+        feature.searchText = "Generator"
+
+        XCTAssertEqual(feature.displayedNotes.map(\.id), [first.id])
+        XCTAssertEqual(feature.selectedNoteID, first.id)
+    }
+
+    @MainActor
+    func testFailedNoteRestoreStaysInTrash() throws {
+        let fixture = try PhaseFiveTestFixture()
+        let storeURL = fixture.rootURL.appendingPathComponent("Notes.json")
+        let deletedNote = DroppyNote(
+            title: "Keep in Trash",
+            deletedAt: Date()
+        )
+        XCTAssertTrue(
+            NotesStore(fileURL: storeURL).save(
+                NotesArchive(notes: [deletedNote])
+            )
+        )
+        let feature = NotesFeature(
+            store: NotesStore(
+                fileURL: storeURL,
+                writer: { _, _ in false }
+            )
+        )
+        feature.select(deletedNote.id)
+
+        feature.restoreSelected()
+
+        XCTAssertTrue(feature.isShowingTrash)
+        XCTAssertNotNil(feature.selectedNote?.deletedAt)
+        XCTAssertNotNil(feature.storageErrorMessage)
+    }
+
+    func testCorruptNotesAreNotOverwritten() throws {
+        let fixture = try PhaseFiveTestFixture()
+        let storeURL = fixture.rootURL.appendingPathComponent("Notes.json")
+        let original = Data("[broken".utf8)
+        try original.write(to: storeURL)
+        let store = NotesStore(fileURL: storeURL)
+
+        guard case .failed = store.load() else {
+            return XCTFail("Expected a failed notes load")
+        }
+        XCTAssertFalse(store.save(NotesArchive()))
+        XCTAssertEqual(try Data(contentsOf: storeURL), original)
+    }
+
+    func testNoteMarkdownExportUsesSafeFilename() {
+        let note = DroppyNote(
+            title: "Run: Dashboard/Scripts",
+            body: "```sh\n./listener.sh\n```"
+        )
+
+        XCTAssertEqual(note.exportFileName, "Run- Dashboard-Scripts.md")
+        XCTAssertEqual(
+            note.markdown,
+            "# Run: Dashboard/Scripts\n\n```sh\n./listener.sh\n```"
+        )
+    }
+
+    func testUnifiedSearchRanksExactTitleBeforeMetadataMatch() {
+        let exact = UnifiedSearchResult(
+            id: "exact",
+            source: .notes,
+            target: .note(UUID()),
+            title: "listener",
+            subtitle: "",
+            relevance: UnifiedSearchFeature.relevance(
+                title: "listener",
+                metadata: "",
+                query: "listener"
+            )
+        )
+        let metadata = UnifiedSearchResult(
+            id: "metadata",
+            source: .files,
+            target: .file(URL(fileURLWithPath: "/tmp/generator.sh")),
+            title: "generator.sh",
+            subtitle: "/scripts/listener",
+            relevance: UnifiedSearchFeature.relevance(
+                title: "generator.sh",
+                metadata: "/scripts/listener",
+                query: "listener"
+            )
+        )
+
+        XCTAssertEqual(
+            UnifiedSearchFeature.sorted([metadata, exact]).map(\.id),
+            ["exact", "metadata"]
+        )
+    }
+
+    func testUnifiedSearchLimitsAfterRanking() {
+        let weakMatches = (0..<13).map { index in
+            UnifiedSearchResult(
+                id: "weak-\(index)",
+                source: .notes,
+                target: .note(UUID()),
+                title: "Note \(index)",
+                subtitle: "listener metadata",
+                relevance: 100
+            )
+        }
+        let exact = UnifiedSearchResult(
+            id: "exact",
+            source: .notes,
+            target: .note(UUID()),
+            title: "listener",
+            subtitle: "",
+            relevance: 400
+        )
+
+        let results = UnifiedSearchFeature.topResults(
+            weakMatches + [exact],
+            maximum: 12
+        )
+
+        XCTAssertEqual(results.first?.id, "exact")
+        XCTAssertEqual(results.count, 12)
+    }
+
+    @MainActor
+    func testTerminalFeatureRetainsMultipleIndependentSessions() {
+        let feature = TerminalFeature()
+        let first = feature.newSession(
+            currentDirectoryURL: URL(fileURLWithPath: "/tmp")
+        )
+        let second = feature.newSession(
+            currentDirectoryURL: FileManager.default.homeDirectoryForCurrentUser
+        )
+
+        XCTAssertEqual(feature.sessions.count, 2)
+        XCTAssertEqual(feature.selectedSessionID, second.id)
+        XCTAssertEqual(first.state, .ready)
+        XCTAssertEqual(second.state, .ready)
+
+        feature.close(first)
+        XCTAssertEqual(feature.sessions.map(\.id), [second.id])
+    }
+
+    @MainActor
+    func testTerminalSessionStartsAndStopsPTY() async {
+        let session = TerminalSessionController(
+            currentDirectoryURL: URL(fileURLWithPath: "/tmp")
+        )
+        session.startIfNeeded()
+        let processID = session.terminalView.process.shellPid
+        let processIdentity = try? XCTUnwrap(
+            TerminalProcessTree.identity(for: processID)
+        )
+        XCTAssertGreaterThan(processID, 0)
+        XCTAssertTrue(TerminalProcessTree.isAlive(processID))
+        let stopped = expectation(description: "PTY stopped")
+
+        session.terminate { stoppedSuccessfully in
+            XCTAssertTrue(stoppedSuccessfully)
+            stopped.fulfill()
+        }
+        await fulfillment(of: [stopped], timeout: 3)
+
+        XCTAssertFalse(
+            processIdentity.map(TerminalProcessTree.isAlive) ?? true
+        )
+        guard case .exited = session.state else {
+            return XCTFail("Expected the terminal session to exit")
+        }
+    }
+
+    func testTerminalProcessIdentityRejectsReusedPID() throws {
+        let identity = try XCTUnwrap(
+            TerminalProcessTree.identity(for: getpid())
+        )
+        XCTAssertTrue(TerminalProcessTree.isAlive(identity))
+
+        let differentProcess = TerminalProcessIdentity(
+            pid: identity.pid,
+            startSeconds: identity.startSeconds,
+            startMicroseconds: identity.startMicroseconds &+ 1
+        )
+        XCTAssertFalse(TerminalProcessTree.isAlive(differentProcess))
+    }
+
+    func testTerminalProcessTreeStopsChildCommands() throws {
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/bin/sh")
+        process.arguments = ["-c", "trap '' TERM; sleep 30 & wait"]
+        try process.run()
+        defer {
+            if process.isRunning {
+                process.terminate()
+            }
+        }
+
+        let deadline = Date().addingTimeInterval(1)
+        while
+            TerminalProcessTree.childPIDs(
+                of: process.processIdentifier
+            ).isEmpty,
+            Date() < deadline
+        {
+            Thread.sleep(forTimeInterval: 0.02)
+        }
+        let childProcessIDs = TerminalProcessTree.childPIDs(
+            of: process.processIdentifier
+        )
+        XCTAssertFalse(childProcessIDs.isEmpty)
+        let trackedProcessIDs = Set(
+            childProcessIDs + [process.processIdentifier]
+        )
+
+        TerminalProcessTree.signal(
+            processIDs: trackedProcessIDs,
+            rootPID: process.processIdentifier,
+            signal: SIGTERM
+        )
+        Thread.sleep(forTimeInterval: 0.1)
+        XCTAssertTrue(
+            trackedProcessIDs.contains(where: TerminalProcessTree.isAlive)
+        )
+        TerminalProcessTree.signal(
+            processIDs: trackedProcessIDs,
+            rootPID: process.processIdentifier,
+            signal: SIGKILL
+        )
+        process.waitUntilExit()
+
+        let exitDeadline = Date().addingTimeInterval(1)
+        while
+            trackedProcessIDs.contains(where: TerminalProcessTree.isAlive),
+            Date() < exitDeadline
+        {
+            Thread.sleep(forTimeInterval: 0.02)
+        }
+        XCTAssertFalse(
+            trackedProcessIDs.contains(where: TerminalProcessTree.isAlive)
+        )
+    }
+
+    @MainActor
+    func testTerminalRestartWaitsForOldProcessTree() async {
+        let session = TerminalSessionController(
+            currentDirectoryURL: URL(fileURLWithPath: "/tmp")
+        )
+        session.startIfNeeded()
+        let oldTerminalView = session.terminalView
+        let oldRootPID = session.terminalView.process.shellPid
+        session.sendCommand("trap '' TERM; sleep 30 & wait")
+
+        let childDeadline = Date().addingTimeInterval(2)
+        while
+            TerminalProcessTree.childPIDs(of: oldRootPID).isEmpty,
+            Date() < childDeadline
+        {
+            try? await Task.sleep(nanoseconds: 20_000_000)
+        }
+        let oldProcessIdentities = TerminalProcessTree.identities(
+            for: TerminalProcessTree.childPIDs(of: oldRootPID) + [oldRootPID]
+        )
+        XCTAssertGreaterThan(oldProcessIdentities.count, 1)
+
+        session.restart()
+        let restartDeadline = Date().addingTimeInterval(4)
+        while
+            (
+                session.terminalView.process.shellPid == oldRootPID
+                    || !session.state.isRunning
+            ),
+            Date() < restartDeadline
+        {
+            try? await Task.sleep(nanoseconds: 20_000_000)
+        }
+
+        XCTAssertTrue(session.state.isRunning)
+        XCTAssertTrue(session.terminalView.process.running)
+        XCTAssertFalse(session.terminalView === oldTerminalView)
+        XCTAssertNotEqual(
+            session.terminalView.process.shellPid,
+            oldRootPID
+        )
+        XCTAssertFalse(
+            oldProcessIdentities.contains(
+                where: TerminalProcessTree.isAlive
+            )
+        )
+        session.processTerminated(source: oldTerminalView, exitCode: 0)
+        let replacementTitle = session.title
+        let replacementDirectory = session.currentDirectoryURL
+        session.setTerminalTitle(
+            source: oldTerminalView,
+            title: "Stale terminal"
+        )
+        session.hostCurrentDirectoryUpdate(
+            source: oldTerminalView,
+            directory: "/stale/directory"
+        )
+        await Task.yield()
+        XCTAssertTrue(session.state.isRunning)
+        XCTAssertTrue(session.terminalView.process.running)
+        XCTAssertEqual(session.title, replacementTitle)
+        XCTAssertEqual(session.currentDirectoryURL, replacementDirectory)
+
+        let stopped = expectation(description: "Replacement PTY stopped")
+        session.terminate { stoppedSuccessfully in
+            XCTAssertTrue(stoppedSuccessfully)
+            stopped.fulfill()
+        }
+        await fulfillment(of: [stopped], timeout: 3)
+    }
+
+    @MainActor
+    func testExplicitTerminateCancelsPendingRestart() async {
+        let session = TerminalSessionController(
+            currentDirectoryURL: URL(fileURLWithPath: "/tmp")
+        )
+        session.startIfNeeded()
+        let oldRootPID = session.terminalView.process.shellPid
+        session.sendCommand("trap '' TERM; sleep 30 & wait")
+
+        let childDeadline = Date().addingTimeInterval(2)
+        while
+            TerminalProcessTree.childPIDs(of: oldRootPID).isEmpty,
+            Date() < childDeadline
+        {
+            try? await Task.sleep(nanoseconds: 20_000_000)
+        }
+        let oldProcessIdentities = TerminalProcessTree.identities(
+            for: TerminalProcessTree.childPIDs(of: oldRootPID) + [oldRootPID]
+        )
+        XCTAssertGreaterThan(oldProcessIdentities.count, 1)
+
+        session.restart()
+        let stopped = expectation(description: "Restart cancelled by terminate")
+        session.terminate { stoppedSuccessfully in
+            XCTAssertTrue(stoppedSuccessfully)
+            stopped.fulfill()
+        }
+        await fulfillment(of: [stopped], timeout: 4)
+
+        guard case .exited = session.state else {
+            return XCTFail("Expected explicit termination to prevent restart")
+        }
+        XCTAssertEqual(session.terminalView.process.shellPid, oldRootPID)
+        XCTAssertFalse(
+            oldProcessIdentities.contains(
+                where: TerminalProcessTree.isAlive
+            )
+        )
+    }
+
     private func clipboardItem(
         capturedAt: Date,
         pinnedAt: Date? = nil,
@@ -738,6 +1256,50 @@ final class DroppyTests: XCTestCase {
         context.setFillColor(NSColor.systemBlue.cgColor)
         context.fill(CGRect(x: 0, y: 0, width: width, height: height))
         return try XCTUnwrap(context.makeImage())
+    }
+}
+
+private final class PhaseFiveTestFixture {
+    let rootURL: URL
+
+    init() throws {
+        rootURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent(
+                "DroppyPhaseFiveTests-\(UUID().uuidString)",
+                isDirectory: true
+            )
+        try FileManager.default.createDirectory(
+            at: rootURL,
+            withIntermediateDirectories: true
+        )
+    }
+
+    deinit {
+        try? FileManager.default.removeItem(at: rootURL)
+    }
+
+    @discardableResult
+    func createFolder(named relativePath: String) throws -> URL {
+        let url = rootURL.appendingPathComponent(
+            relativePath,
+            isDirectory: true
+        )
+        try FileManager.default.createDirectory(
+            at: url,
+            withIntermediateDirectories: true
+        )
+        return url
+    }
+
+    @discardableResult
+    func createFile(named relativePath: String) throws -> URL {
+        let url = rootURL.appendingPathComponent(relativePath)
+        try FileManager.default.createDirectory(
+            at: url.deletingLastPathComponent(),
+            withIntermediateDirectories: true
+        )
+        try Data("fixture".utf8).write(to: url)
+        return url
     }
 }
 

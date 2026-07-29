@@ -94,32 +94,36 @@ local Git commit, and wait for explicit user approval before the next phase.
 
 ## Current checkpoint
 
-Phase 4 is accepted. Snippet is a compact header action: its primary camera
-button starts region capture, while the adjacent menu offers region, window,
-and full-screen modes. Droppy dismisses its panel before invoking the native
-macOS capture service and keeps the raw result temporary.
+Phase 5 is implemented and awaiting acceptance.
 
-The resizable native editor includes pen, highlighter, arrow, rectangle, text,
-blur, fully opaque redaction, crop, undo/redo, color, and thickness. Freehand
-marks use a mutable draft so long strokes stay responsive and create one undo
-step. Done flattens only the edited result to PNG.
+Files adds bookmark-backed favorite folders, defaulting to Downloads,
+Documents, Desktop, and the configured screenshot folder. It browses the
+selected folder, performs cancellable recursive search capped at 200 results,
+skips hidden files and package descendants, and supports open, Quick Look,
+drag-out, Reveal in Finder, and Copy Path. Unreadable saved favorites are never
+overwritten.
 
-Finished snippets save to the configured macOS screenshot location, preferring
-an existing immediate `Screenshots` child such as
-`~/Documents/Screenshots`. Clipboard performs the copy and one explicit
-encrypted screenshot insertion, schedules Vision OCR, and shows the existing
-confirmation. Passive screenshot discovery ignores only that generated path,
-so unrelated screenshots made while editing are not skipped.
+Notes is local, searchable, autosaved with debounced atomic writes, exportable
+as Markdown, and uses a recoverable Trash with automatic cleanup after 30 days.
+Pending edits flush when Droppy quits, and unreadable note archives are preserved
+rather than treated as empty.
 
-Thirty-two automated tests pass. Target-Mac checks verified the header at the
-real panel size, the full editor layout, live pen drawing, undo availability,
-blur preview, capture result, and clipboard image drag behavior. Dragged image
-exports remain readable in a managed cache for one day so delayed chat uploads
-do not lose their source file; expired exports are removed automatically.
+Terminal is a compact header action backed by SwiftTerm 1.11.2 and a real PTY.
+It supports multiple retained zsh sessions, long-running commands, ANSI output,
+Control-C, clear, restart, selectable working folders, and an Apple Terminal
+fallback. Closing the overlay does not stop its sessions; quitting Droppy warns
+before stopping running shells and their child processes. Restart and quit wait
+for the old process tree to exit. A second normal app launch leaves the existing
+instance and its sessions untouched.
 
-Phase 5 is next. It covers Files, Notes, unified search, and an embedded command
-runner for project scripts. The runner's session layout and process-lifetime
-behavior must be confirmed before implementation.
+Unified search is a separate header action that groups ranked Clipboard, Shelf,
+Files, and Notes results and opens the correct destination. Empty queries do no
+work, and stale file searches are cancelled.
+
+Fifty-one automated tests pass. The canonical build is
+`Builds/Droppy.app`; its live process path was verified after replacing the
+previous running copy. Phase 5 still needs the target-Mac interaction acceptance
+check before it is considered accepted.
 
 The final polish phase must include purposeful animations across feature
 transitions and contextual overlays, plus a consistent color theme. Reduced
