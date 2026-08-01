@@ -8,6 +8,7 @@ struct OverlayRootView: View {
     @ObservedObject var fileFinder: FileFinderFeature
     @ObservedObject var notes: NotesFeature
     @ObservedObject var terminal: TerminalFeature
+    @ObservedObject var media: MediaFeature
     @ObservedObject var unifiedSearch: UnifiedSearchFeature
     @State private var clipboardSearchText = ""
     @FocusState private var isSearchFieldFocused: Bool
@@ -22,6 +23,15 @@ struct OverlayRootView: View {
                 header
 
                 Divider()
+
+                if let snapshot = media.displayState.snapshot {
+                    MiniMediaPlayerView(
+                        feature: media,
+                        snapshot: snapshot
+                    )
+
+                    Divider()
+                }
 
                 featureContent
                     .frame(maxWidth: .infinity, maxHeight: .infinity)

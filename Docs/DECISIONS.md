@@ -36,7 +36,7 @@ Date: 2026-07-28
 
 - Clipboard history: seven days, searchable, pinned items retained.
 - Calendar is out of scope; use the existing calendar app directly.
-- Media: Music and Spotify first.
+- Media: Apple Music mini-player only; no separate navigation destination.
 - Codex: official App Server, safe dashboard and replies first.
 - Notes: separate and local.
 - Terminal: embedded command runner for project scripts, with Apple Terminal
@@ -110,6 +110,26 @@ Date: 2026-07-28
   is unavailable, offer the correct System Settings destination and require a
   relaunch after the permission changes.
 
+## Apple Music mini-player
+
+- Support Apple Music only through its local automation interface. Do not use
+  Spotify, source switching, `MediaRemote`, or a network artwork loader.
+- Remove the Media navigation tab and full Media page. Do not add a separate
+  top-center desktop island.
+- Show the compact mini-player directly below the header across every panel
+  surface, including Search and Terminal.
+- Hide it completely without reserving space until Apple Music has a ready
+  snapshot. Keep a paused track visible.
+- Show artwork, a one-line title and artist, previous, play/pause, next, and a
+  thin seek/progress control. Clicking the artwork or title opens Apple Music.
+- Keep Music artwork in an in-memory cache. Unavailable-player and
+  Automation-permission states keep the mini-player hidden. Represent command
+  and seek failures with a compact warning while a ready snapshot remains shown.
+- Own polling with the panel lifecycle: start when the panel opens, then stop
+  polling and cancel active work when it closes.
+- Gate polling callbacks on the active lifecycle generation so an invalidated
+  timer cannot revive polling after the panel closes.
+
 ## Workflow
 
 - Complete one phase at a time.
@@ -126,5 +146,15 @@ Date: 2026-07-28
 - Phase 4: accepted and committed. Clipboard image drag exports received a
   post-acceptance lifetime fix after a delayed Codex upload exposed premature
   temporary-file cleanup.
-- Phase 5: implemented with 53 passing tests; awaiting target-Mac interaction
-  acceptance before the local phase commit is treated as accepted.
+- Phase 5: accepted and committed. Commit `3e8d2e7` contains the phase
+  implementation, and commit `f74cb03` contains the accepted Notes editing and
+  Terminal working-directory fixes. Fifty-three tests passed, and the canonical
+  `Builds/Droppy.app` process was verified running.
+- Phase 6: accepted by the user on 2026-08-01. Its local checkpoint records the
+  compact Apple Music mini-player only, with no
+  Media navigation tab, full Media page, Spotify integration, or source
+  switching. Eleven focused Apple Music tests passed, the canonical
+  `Builds/Droppy.app` build succeeded, and the user accepted the live target-Mac
+  result.
+- Phase 7 Codex is next, but it has not started and still requires explicit user
+  authorization.

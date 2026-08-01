@@ -11,6 +11,7 @@ final class OverlayPanelController: NSWindowController, NSWindowDelegate {
     private let fileFinder = FileFinderFeature.shared
     private let notes = NotesFeature.shared
     private let terminal = TerminalFeature.shared
+    private let media = MediaFeature.shared
     private let unifiedSearch: UnifiedSearchFeature
     private weak var anchorButton: NSStatusBarButton?
     private var globalMouseMonitor: Any?
@@ -56,6 +57,7 @@ final class OverlayPanelController: NSWindowController, NSWindowDelegate {
                 fileFinder: fileFinder,
                 notes: notes,
                 terminal: terminal,
+                media: media,
                 unifiedSearch: search
             )
         )
@@ -142,6 +144,7 @@ final class OverlayPanelController: NSWindowController, NSWindowDelegate {
         ClipboardManagerFeature.shared.setPasteTarget(
             NSWorkspace.shared.frontmostApplication
         )
+        media.start()
         positionPanel()
         window?.makeKeyAndOrderFront(nil)
         startDismissalMonitoring()
@@ -149,6 +152,7 @@ final class OverlayPanelController: NSWindowController, NSWindowDelegate {
 
     private func closePanel() {
         stopDismissalMonitoring()
+        media.stop()
         window?.orderOut(nil)
     }
 

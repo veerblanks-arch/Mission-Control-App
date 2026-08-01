@@ -5,6 +5,236 @@ import XCTest
 @testable import Droppy
 
 final class DroppyTests: XCTestCase {
+    func testMusicMetadataParserPreservesSecondsAndPlaybackState() throws {
+        let output = [
+            "playing",
+            "First Light",
+            "The Artist",
+            "Morning Album",
+            "245.5",
+            "61.25",
+            "",
+        ].joined(separator: MediaMetadataParser.delimiter)
+
+        let metadata = try MediaMetadataParser.parse(output).get()
+
+        XCTAssertEqual(metadata.title, "First Light")
+        XCTAssertEqual(metadata.artist, "The Artist")
+        XCTAssertEqual(metadata.album, "Morning Album")
+        XCTAssertEqual(metadata.duration, 245.5, accuracy: 0.001)
+        XCTAssertEqual(metadata.elapsedTime, 61.25, accuracy: 0.001)
+        XCTAssertTrue(metadata.isPlaying)
+    }
+
+    func testMediaMetadataParserReportsStoppedPlayerClearly() {
+        let result = MediaMetadataParser.parse(MediaMetadataParser.stoppedMarker)
+
+        guard case let .failure(issue) = result else {
+            XCTFail("Expected a stopped-player issue")
+            return
+        }
+        XCTAssertEqual(issue.kind, .nothingPlaying)
+        XCTAssertEqual(issue.title, "Nothing is playing")
+    }
+
+    func testMediaPermissionErrorIsDistinguishedFromAutomationFailure() {
+        let permissionIssue = MediaIssue.automationFailure(
+            status: 1,
+            errorOutput:
+                "Not authorized to send Apple events to Music. (-1743)"
+        )
+        let generalIssue = MediaIssue.automationFailure(
+            status: 1,
+            errorOutput: "Music got an error: connection is invalid."
+        )
+
+        XCTAssertEqual(permissionIssue.kind, .permissionDenied)
+        XCTAssertEqual(generalIssue.kind, .automationFailed)
+    }
+
+    func testMediaSnapshotProgressAndSeekingAreClamped() {
+        let snapshot = MediaSnapshot(
+            title: "Track",
+            artist: "Artist",
+            artwork: nil,
+            elapsedTime: 30,
+            duration: 120,
+            isPlaying: true
+        )
+
+        XCTAssertEqual(snapshot.progress, 0.25, accuracy: 0.001)
+        XCTAssertEqual(
+            snapshot.replacing(elapsedTime: 500).elapsedTime,
+            120,
+            accuracy: 0.001
+        )
+        XCTAssertEqual(
+            snapshot.replacing(elapsedTime: -20).elapsedTime,
+            0,
+            accuracy: 0.001
+        )
+    }
+
+    func testMiniMediaPlayerUsesPausedReadySnapshot() {
+        let model = OverlayPanelModel()
+        let pausedSnapshot = MediaSnapshot(
+            title: "Paused Track",
+            artist: "Artist",
+            artwork: nil,
+            elapsedTime: 20,
+            duration: 100,
+            isPlaying: false
+        )
+
+        XCTAssertFalse(pausedSnapshot.isPlaying)
+        XCTAssertNotNil(MediaDisplayState.ready(pausedSnapshot).snapshot)
+        XCTAssertNil(MediaDisplayState.idle.snapshot)
+        XCTAssertEqual(OverlayFeature.allCases.count, 4)
+        XCTAssertFalse(OverlayFeature.allCases.map(\.rawValue).contains("media"))
+    }
+
+    @MainActor
+    func testMediaLifecycleStartsOnceAndCanRestartAfterStop() {
+        let client = MediaClientSpy()
+        let feature = MediaFeature(client: client)
+
+        feature.start()
+        feature.start()
+        XCTAssertEqual(client.fetchRequests.count, 1)
+
+        let firstRequest = client.fetchRequests[0]
+        feature.stop()
+        XCTAssertTrue(firstRequest.isCancelled)
+
+        feature.start()
+        XCTAssertEqual(client.fetchRequests.count, 2)
+        feature.stop()
+    }
+
+    @MainActor
+    func testQueuedMediaTimerTickDoesNotRefreshAfterStop() {
+        let client = MediaClientSpy()
+        let feature = MediaFeature(client: client)
+
+        feature.start()
+        let queuedTimerTick = feature.makeRefreshTimerTick()
+        XCTAssertEqual(client.fetchRequests.count, 1)
+
+        feature.stop()
+        queuedTimerTick()
+
+        XCTAssertEqual(client.fetchRequests.count, 1)
+    }
+
+    func testMediaCancellationRunsRegisteredActionsOnce() {
+        let cancellation = MediaCancellation()
+        var actionCount = 0
+        cancellation.add {
+            actionCount += 1
+        }
+
+        cancellation.cancel()
+        cancellation.cancel()
+        cancellation.add {
+            actionCount += 1
+        }
+
+        XCTAssertTrue(cancellation.isCancelled)
+        XCTAssertEqual(actionCount, 2)
+    }
+
+    @MainActor
+    func testQuietMediaRefreshDoesNotStarveAnInFlightArtworkRequest() {
+        let client = MediaClientSpy()
+        let feature = MediaFeature(client: client)
+
+        feature.refresh()
+        let firstRequest = client.fetchRequests[0]
+        feature.refresh(quietly: true)
+
+        XCTAssertEqual(client.fetchRequests.count, 1)
+        XCTAssertFalse(firstRequest.isCancelled)
+
+        feature.refresh()
+
+        XCTAssertEqual(client.fetchRequests.count, 2)
+        XCTAssertTrue(firstRequest.isCancelled)
+    }
+
+    @MainActor
+    func testMediaControlFailurePublishesWarningWhileSnapshotStaysReady() async {
+        let client = MediaClientSpy()
+        let feature = MediaFeature(client: client)
+        let snapshot = MediaSnapshot(
+            title: "Track",
+            artist: "Artist",
+            artwork: nil,
+            elapsedTime: 10,
+            duration: 120,
+            isPlaying: true
+        )
+        feature.start()
+        client.completeLatestFetch(.success(snapshot))
+        await Task.yield()
+
+        let issue = MediaIssue.automationFailure(
+            status: 1,
+            errorOutput: "Apple Music rejected the command."
+        )
+        feature.nextTrack()
+        client.completeLatestPerform(.failure(issue))
+        await Task.yield()
+
+        XCTAssertEqual(feature.controlMessage, issue.message)
+        XCTAssertNotNil(feature.displayState.snapshot)
+        feature.stop()
+    }
+
+    @MainActor
+    func testStoppingMediaCancelsDelayedPostControlRefresh() async {
+        let client = MediaClientSpy()
+        let feature = MediaFeature(client: client)
+        feature.start()
+        client.completeLatestFetch(
+            .success(
+                MediaSnapshot(
+                    title: "Track",
+                    artist: "Artist",
+                    artwork: nil,
+                    elapsedTime: 10,
+                    duration: 120,
+                    isPlaying: true
+                )
+            )
+        )
+        await Task.yield()
+
+        feature.togglePlayPause()
+        client.completeLatestPerform(.success(()))
+        await Task.yield()
+        feature.stop()
+        try? await Task.sleep(for: .milliseconds(450))
+
+        XCTAssertEqual(client.fetchRequests.count, 1)
+
+        feature.refresh()
+        XCTAssertEqual(client.fetchRequests.count, 2)
+    }
+
+    func testAppleScriptArtworkDescriptorDecodesHexPayload() {
+        XCTAssertEqual(
+            LocalMediaClient.appleScriptDataDescriptor(
+                from: "«data JPEG48656C6C6F»"
+            ),
+            Data("Hello".utf8)
+        )
+        XCTAssertNil(
+            LocalMediaClient.appleScriptDataDescriptor(
+                from: "not an AppleScript data descriptor"
+            )
+        )
+    }
+
     func testApplicationMenuProvidesStandardEditingShortcuts() {
         let menu = ApplicationMenu.make()
         let editMenu = menu.items
@@ -1290,6 +1520,41 @@ final class DroppyTests: XCTestCase {
         context.setFillColor(NSColor.systemBlue.cgColor)
         context.fill(CGRect(x: 0, y: 0, width: width, height: height))
         return try XCTUnwrap(context.makeImage())
+    }
+}
+
+private final class MediaClientSpy: MediaClientProtocol {
+    private(set) var fetchRequests: [MediaCancellation] = []
+    private var fetchCompletions:
+        [(Result<MediaSnapshot, MediaIssue>) -> Void] = []
+    private var performCompletions:
+        [(Result<Void, MediaIssue>) -> Void] = []
+
+    func fetch(
+        completion: @escaping (Result<MediaSnapshot, MediaIssue>) -> Void
+    ) -> MediaCancellation {
+        let cancellation = MediaCancellation()
+        fetchRequests.append(cancellation)
+        fetchCompletions.append(completion)
+        return cancellation
+    }
+
+    func perform(
+        command: MediaCommand,
+        completion: @escaping (Result<Void, MediaIssue>) -> Void
+    ) -> MediaCancellation {
+        performCompletions.append(completion)
+        return MediaCancellation()
+    }
+
+    func completeLatestFetch(
+        _ result: Result<MediaSnapshot, MediaIssue>
+    ) {
+        fetchCompletions.last?(result)
+    }
+
+    func completeLatestPerform(_ result: Result<Void, MediaIssue>) {
+        performCompletions.last?(result)
     }
 }
 

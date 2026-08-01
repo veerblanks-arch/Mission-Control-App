@@ -20,8 +20,8 @@ notifications, then dismisses according to the behavior of that feature.
 - Shelf: stores persistent references to original files, ordered newest first.
   Adding the same path again updates its timestamp. Removing a reference never
   deletes the original file.
-- Navigation: vertical icon rail for Clipboard, Shelf, Codex, Files, Notes,
-  and Media. Snippet and Terminal are header actions.
+- Navigation: vertical icon rail for Clipboard, Shelf, Codex, Files, and Notes.
+  Snippet and Terminal are header actions.
 
 ## Feature decisions
 
@@ -55,10 +55,25 @@ notifications, then dismisses according to the behavior of that feature.
 - New command sessions start in the current favorite folder or selected Codex
   project.
 
-### Media
+### Apple Music mini-player
 
-- Media supports Music and Spotify through their local automation interfaces.
-- Private `MediaRemote` is not part of the active implementation.
+- Phase 6 supports Apple Music only through its local automation interface.
+  Private `MediaRemote` and network artwork loading are not part of the active
+  implementation.
+- There is no Media navigation tab, full Media page, source switcher, or
+  separate top-center desktop island.
+- A compact mini-player appears directly below the header across every panel
+  surface, including Search and Terminal.
+- The mini-player reserves no space and stays completely hidden unless Apple
+  Music has a ready snapshot. A paused track remains visible.
+- It shows artwork, a one-line title and artist, previous, play/pause, next, and
+  a thin seek/progress control. Clicking its artwork or title opens Apple Music.
+- Music artwork uses an in-memory cache. Unavailable and Automation-permission
+  states keep the mini-player hidden. Command or seek failures that occur while
+  it is visible use a compact warning with tooltip and accessibility details.
+- Polling follows the panel lifecycle: it starts when the panel opens and stops
+  and cancels active work when the panel closes. An active lifecycle-generation
+  gate prevents a stale polling timer from reviving after closure.
 
 ### Codex
 
@@ -84,7 +99,7 @@ notifications, then dismisses according to the behavior of that feature.
 3. Clipboard and Screenshots.
 4. Snippet.
 5. Files, Notes, Terminal, and unified search.
-6. Media.
+6. Apple Music mini-player.
 7. Codex.
 8. Polish, accessibility, performance, launch at login, settings, motion
    design, and a cohesive app-wide color theme.
@@ -94,7 +109,9 @@ local Git commit, and wait for explicit user approval before the next phase.
 
 ## Current checkpoint
 
-Phase 5 is implemented and awaiting acceptance.
+Phase 5 is accepted and committed. The main implementation is recorded in
+commit `3e8d2e7`, with the accepted Notes editing and Terminal working-directory
+fixes in commit `f74cb03`.
 
 Files adds bookmark-backed favorite folders, defaulting to Downloads,
 Documents, Desktop, and the configured screenshot folder. It browses the
@@ -128,8 +145,34 @@ work, and stale file searches are cancelled.
 
 Fifty-three automated tests pass. The canonical build is
 `Builds/Droppy.app`; its live process path was verified after replacing the
-previous running copy. Phase 5 still needs the target-Mac interaction acceptance
-check before it is considered accepted.
+previous running copy. The user completed the target-Mac interaction acceptance
+check and explicitly authorized Phase 6.
+
+Phase 6 is implemented and accepted. The user accepted the live target-Mac
+result on 2026-08-01. The final
+scope is an Apple Music-only mini-player directly below the header across every
+panel surface, including Search and Terminal. There is no Media navigation tab,
+full Media page, source switcher, Spotify integration, network artwork loader,
+or separate top-center desktop island.
+
+The mini-player stays completely hidden without reserving space until Apple
+Music has a ready snapshot; paused tracks remain visible. It shows artwork, a
+one-line title and artist, previous, play/pause, next, and a thin seek/progress
+control. Clicking its artwork or title opens Apple Music. Unavailable-player and
+Automation-permission states keep it hidden; command and seek failures use a
+compact warning while a ready snapshot remains visible.
+
+Polling starts when the panel opens and stops and cancels active work when the
+panel closes. The reviewer-reported timer race is fixed by gating polling
+callbacks on the active panel lifecycle generation.
+
+Eleven focused Apple Music tests passed after the reviewer feedback fix for
+compact command-error presentation, and the canonical `Builds/Droppy.app` build
+succeeded. The target-Mac Apple Music and mini-player UI result was accepted by
+the user.
+
+Phase 7 Codex is next, but it has not started and still requires explicit user
+authorization.
 
 The final polish phase must include purposeful animations across feature
 transitions and contextual overlays, plus a consistent color theme. Reduced

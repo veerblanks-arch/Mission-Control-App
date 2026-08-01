@@ -20,6 +20,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let clipboardManager = ClipboardManagerFeature.shared
     private let shelf = ShelfFeature.shared
     private let terminal = TerminalFeature.shared
+    private let media = MediaFeature.shared
     private let notes = NotesFeature.shared
     private lazy var dropZoneCoordinator = DropZoneCoordinator(shelf: shelf)
     private lazy var snippetCaptureCoordinator = SnippetCaptureCoordinator(
@@ -159,6 +160,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationWillTerminate(_ notification: Notification) {
         notes.flushPendingSave()
+        media.stop()
         terminal.stopAll()
         dropZoneCoordinator.stop()
         clipboardManager.stop()

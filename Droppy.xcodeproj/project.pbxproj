@@ -37,6 +37,8 @@
 		100000000000000000000025 /* TerminalFeature.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000028 /* TerminalFeature.swift */; };
 		100000000000000000000026 /* UnifiedSearchFeature.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000029 /* UnifiedSearchFeature.swift */; };
 		100000000000000000000027 /* SwiftTerm in Frameworks */ = {isa = PBXBuildFile; productRef = A000000000000000000000002 /* SwiftTerm */; };
+		100000000000000000000028 /* MediaFeature.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20000000000000000000002A /* MediaFeature.swift */; };
+		100000000000000000000029 /* MediaView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20000000000000000000002B /* MediaView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -82,6 +84,8 @@
 		200000000000000000000027 /* NotesFeature.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotesFeature.swift; sourceTree = "<group>"; };
 		200000000000000000000028 /* TerminalFeature.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TerminalFeature.swift; sourceTree = "<group>"; };
 		200000000000000000000029 /* UnifiedSearchFeature.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UnifiedSearchFeature.swift; sourceTree = "<group>"; };
+		20000000000000000000002A /* MediaFeature.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MediaFeature.swift; sourceTree = "<group>"; };
+		20000000000000000000002B /* MediaView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MediaView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -158,6 +162,7 @@
 				700000000000000000000018 /* Notes */,
 				700000000000000000000019 /* Terminal */,
 				70000000000000000000001A /* Search */,
+				70000000000000000000001B /* Media */,
 			);
 			path = Features;
 			sourceTree = "<group>";
@@ -234,6 +239,15 @@
 				200000000000000000000029 /* UnifiedSearchFeature.swift */,
 			);
 			path = Search;
+			sourceTree = "<group>";
+		};
+		70000000000000000000001B /* Media */ = {
+			isa = PBXGroup;
+			children = (
+				20000000000000000000002A /* MediaFeature.swift */,
+				20000000000000000000002B /* MediaView.swift */,
+			);
+			path = Media;
 			sourceTree = "<group>";
 		};
 		700000000000000000000010 /* Storage */ = {
@@ -382,6 +396,8 @@
 				100000000000000000000024 /* NotesFeature.swift in Sources */,
 				100000000000000000000025 /* TerminalFeature.swift in Sources */,
 				100000000000000000000026 /* UnifiedSearchFeature.swift in Sources */,
+				100000000000000000000028 /* MediaFeature.swift in Sources */,
+				100000000000000000000029 /* MediaView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
