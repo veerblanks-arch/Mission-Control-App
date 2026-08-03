@@ -12,7 +12,7 @@ output="$products_dir/Droppy.app"
 mkdir -p "$products_dir"
 
 xcodebuild \
-    -project "$repo_root/Droppy.xcodeproj" \
+    -project "$repo_root/MissionControl.xcodeproj" \
     -scheme Droppy \
     -configuration Debug \
     -destination "platform=macOS,arch=arm64" \

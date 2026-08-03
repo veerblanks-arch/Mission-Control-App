@@ -326,7 +326,7 @@
 			children = (
 				200000000000000000000010 /* DroppyTests.swift */,
 			);
-			path = DroppyTests;
+			path = MissionControlTests;
 			sourceTree = "<group>";
 		};
 		700000000000000000000013 /* Products */ = {
@@ -586,7 +586,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				GENERATE_INFOPLIST_FILE = NO;
-				INFOPLIST_FILE = Droppy/Resources/Info.plist;
+				INFOPLIST_FILE = MissionControl/Resources/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
@@ -606,7 +606,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				GENERATE_INFOPLIST_FILE = NO;
-				INFOPLIST_FILE = Droppy/Resources/Info.plist;
+				INFOPLIST_FILE = MissionControl/Resources/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",

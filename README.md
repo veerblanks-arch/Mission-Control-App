@@ -58,7 +58,7 @@ From the repository root:
 ./Scripts/build-debug.sh
 ```
 
-The debug application is written to `Builds/Droppy.app` by the current build
+The debug application is written to `Builds/MissionControl.app` by the current build
 script. To run the debug target with the standard launch arguments, use:
 
 ```bash
@@ -70,8 +70,8 @@ To run the test suite in Xcode, select the `Droppy` scheme and run the tests.
 ## Project layout
 
 ```text
-Droppy/                 Swift and AppKit application code
-Droppy/Features/        Clipboard, Shelf, Files, Notes, Terminal, Music, and Codex
+MissionControl/ Swift and AppKit application code
+MissionControl/         Clipboard, Shelf, Files, Notes, Terminal, Music, and Codex
 DroppyTests/             Unit and integration-focused tests
 Scripts/                 Local build and debug helpers
 Docs/                    Product decisions and implementation notes
@@ -80,4 +80,3 @@ Docs/                    Product decisions and implementation notes
 Mission Control is a native AppKit application. Feature state is kept in
 small, focused modules, while the menu-bar controller and overlay coordinate
 the shared workspace surface.
-
