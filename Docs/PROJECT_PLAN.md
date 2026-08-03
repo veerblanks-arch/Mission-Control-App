@@ -78,17 +78,48 @@ notifications, then dismisses according to the behavior of that feature.
 ### Codex
 
 - Integrate through the supported Codex App Server, not private database reads.
-- Show three tasks by default, with search for the rest.
-- Show task title, project, status, model, recent exchange, and account usage.
-- A visible Send button submits replies. `Command-Return` is optional.
+- Show the recent APUSH, Bitwise, and Droppy project groups ordered by activity,
+  followed by one `Normal Chats` group for temporary, one-off, older-project,
+  and otherwise unmatched working directories. Each group expands to show all
+  of its non-archived chats; thread-list pagination must be followed until
+  exhausted rather than stopping at the first page. Project search may surface
+  `Normal Chats` when one of its original working directories matches.
+- Show existing tasks as read-only saved history: task title, project, status,
+  recent exchange, and the exact model returned when Droppy starts its own
+  task, cached per chat. Opening an existing task never resumes it.
+- Live updates and replies occur in Codex through `Open in Codex`.
+- Droppy can create and run only the initial task through its own App Server.
+- Show remaining account capacity as a simple percentage (`100 - usedPercent`).
+  Keep it visible in both the dashboard and opened chats.
 - File drops open a reviewable new-task composer. Images attach directly;
-  other files are passed as local paths.
-- New tasks use the current Codex default model.
+  other files are passed as local paths. Task creation retains project search,
+  role, attachments, and usage indicators.
+- New tasks choose a project and one of four roles: Planner, Builder A,
+  Builder B, or Reviewer. The project picker is limited to APUSH, Bitwise, and
+  Droppy, with `Choose Folder...` available for an intentional one-off path.
+  Tasks use the current Codex default model.
+- A single compact four-role strip sits at the top right beside the Droppy
+  logo and remains visible even when no chats are running. Clicking a role
+  opens its running-chat dropdown; an idle role shows `No running chats`.
+- The four-role strip represents only Droppy-managed active initial tasks.
+  External tasks have a generic chat identity and no invented agent role.
+- A completed Droppy-managed task briefly highlights its exact chat row and, if
+  open, its chat status banner. The role-strip icon does not animate. Reduced
+  Motion keeps the completion state static instead of scaling the row.
 - Approvals, destructive actions, shell commands, and model changes stay in
-  Codex.
-- Completed and permission-waiting tasks use menu-icon-sized top-center agents.
-  They remain until clicked, open the matching Codex task, and use a brief exit
-  animation. Reduced Motion uses static poses and fades.
+  Codex. Protected approval and input prompts are cancelled safely by the
+  integration.
+- A bounded App Server reconnect handles transient process exits.
+- A separate supported App Server process cannot claim live status for chats
+  currently owned by the Codex desktop runtime. In the live check, the Desktop
+  task was active while Droppy's separate App Server reported `notLoaded` but
+  could read the persisted history. Existing external tasks therefore remain
+  read-only saved history in Droppy and are not treated as live by the role
+  strip.
+- OpenAI's first-party Remote connections can continue the same host chats from
+  a paired ChatGPT mobile app. The current App Server schema exposes remote
+  status but no client request for third-party pairing or relay takeover, so
+  Droppy does not present that private first-party path as an integration API.
 
 ## Delivery phases
 
@@ -171,8 +202,20 @@ compact command-error presentation, and the canonical `Builds/Droppy.app` build
 succeeded. The target-Mac Apple Music and mini-player UI result was accepted by
 the user.
 
-Phase 7 Codex is next, but it has not started and still requires explicit user
-authorization.
+Phase 7 Codex is implemented and verified in code, but target-Mac acceptance
+and the local commit are pending. It must not be treated as accepted yet.
+The verified scope includes the recent-project expandable dashboard with a
+single `Normal Chats` fallback, project-only search, project-and-role task
+creation limited to APUSH, Bitwise, and Droppy plus `Choose Folder...`, a
+saved-history viewer with `Open in Codex`,
+remaining capacity in the dashboard and opened histories, exact returned model
+caching for Droppy-started tasks, the top-right four-role strip for
+Droppy-managed active initial tasks, generic identity for external tasks,
+exact-chat completion feedback with Reduced Motion, and the persisted-history
+live-status finding documented above. The final correction pass executed 74
+tests with zero failures, and `Scripts/build-debug.sh` produced the canonical
+`Builds/Droppy.app` successfully. Target-Mac acceptance and the local commit
+remain pending.
 
 The final polish phase must include purposeful animations across feature
 transitions and contextual overlays, plus a consistent color theme. Reduced

@@ -12,6 +12,7 @@ final class OverlayPanelController: NSWindowController, NSWindowDelegate {
     private let notes = NotesFeature.shared
     private let terminal = TerminalFeature.shared
     private let media = MediaFeature.shared
+    private let codex = CodexFeature.shared
     private let unifiedSearch: UnifiedSearchFeature
     private weak var anchorButton: NSStatusBarButton?
     private var globalMouseMonitor: Any?
@@ -58,6 +59,7 @@ final class OverlayPanelController: NSWindowController, NSWindowDelegate {
                 notes: notes,
                 terminal: terminal,
                 media: media,
+                codex: codex,
                 unifiedSearch: search
             )
         )
@@ -114,6 +116,17 @@ final class OverlayPanelController: NSWindowController, NSWindowDelegate {
         model.showFeature(.clipboard)
         if let focusedItemID {
             ClipboardManagerFeature.shared.focus(focusedItemID)
+        }
+        show(relativeTo: statusButton)
+    }
+
+    func showCodex(
+        relativeTo statusButton: NSStatusBarButton,
+        threadID: String? = nil
+    ) {
+        model.showFeature(.codex)
+        if let threadID {
+            codex.openThread(id: threadID)
         }
         show(relativeTo: statusButton)
     }

@@ -89,8 +89,198 @@ final class DroppyTests: XCTestCase {
         XCTAssertFalse(pausedSnapshot.isPlaying)
         XCTAssertNotNil(MediaDisplayState.ready(pausedSnapshot).snapshot)
         XCTAssertNil(MediaDisplayState.idle.snapshot)
-        XCTAssertEqual(OverlayFeature.allCases.count, 4)
+        XCTAssertEqual(OverlayFeature.allCases.count, 5)
         XCTAssertFalse(OverlayFeature.allCases.map(\.rawValue).contains("media"))
+        XCTAssertTrue(OverlayFeature.allCases.map(\.rawValue).contains("codex"))
+    }
+
+    @MainActor
+    func testCodexThreadStatusParsingDistinguishesRunningWaitingAndUnavailable() {
+        XCTAssertEqual(
+            CodexFeature.parseStatus(["type": "active", "activeFlags": []]),
+            .running
+        )
+        XCTAssertEqual(
+            CodexFeature.parseStatus([
+                "type": "active",
+                "activeFlags": ["waitingOnApproval"],
+            ]),
+            .waiting
+        )
+        XCTAssertEqual(CodexFeature.parseStatus(["type": "systemError"]), .failed)
+        XCTAssertEqual(CodexFeature.parseStatus(["type": "notLoaded"]), .unavailable)
+        XCTAssertEqual(CodexRuntimeStatus.unavailable.title, "Saved history")
+        XCTAssertTrue(CodexRuntimeStatus.running.isActive)
+        XCTAssertTrue(CodexRuntimeStatus.waiting.isActive)
+        XCTAssertFalse(CodexRuntimeStatus.idle.isActive)
+    }
+
+    @MainActor
+    func testUnmanagedCodexThreadHasNoInventedAgentRole() {
+        let suiteName = "DroppyTests.CodexUnmanagedRole.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName)!
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+        let feature = CodexFeature(defaults: defaults)
+
+        XCTAssertNil(feature.role(for: "external-thread"))
+        XCTAssertFalse(feature.isDroppyManaged("external-thread"))
+    }
+
+    @MainActor
+    func testPersistedCodexRoleMarksOnlyThatThreadAsDroppyManaged() throws {
+        let suiteName = "DroppyTests.CodexManagedRole.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName)!
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+        defaults.set(
+            try JSONEncoder().encode(["managed-thread": CodexAgentRole.builderA]),
+            forKey: "codexThreadRoleAssignments"
+        )
+        let feature = CodexFeature(defaults: defaults)
+
+        XCTAssertTrue(feature.isDroppyManaged("managed-thread"))
+        XCTAssertEqual(feature.role(for: "managed-thread"), .builderA)
+        XCTAssertFalse(feature.isDroppyManaged("external-thread"))
+    }
+
+    @MainActor
+    func testCodexThreadParsingUsesNameProjectAndRecency() throws {
+        let summary = try XCTUnwrap(CodexFeature.parseThread(
+            [
+                "id": "thread-7",
+                "name": "Ship Phase 7",
+                "preview": "Build the Codex dashboard",
+                "cwd": "/Users/example/Documents/Droppy Copy",
+                "status": ["type": "idle"],
+                "recencyAt": NSNumber(value: 1_700_000_000),
+            ],
+            model: "gpt-test"
+        ))
+
+        XCTAssertEqual(summary.id, "thread-7")
+        XCTAssertEqual(summary.title, "Ship Phase 7")
+        XCTAssertEqual(summary.projectName, "Droppy Copy")
+        XCTAssertEqual(summary.status, .idle)
+        XCTAssertEqual(summary.model, "gpt-test")
+        XCTAssertEqual(summary.updatedAt.timeIntervalSince1970, 1_700_000_000, accuracy: 0.001)
+    }
+
+    @MainActor
+    func testCodexDashboardKeepsRecentProjectsAndFoldsOtherPathsIntoNormalChats() {
+        let olderBitwise = codexThread(
+            id: "bitwise-old",
+            cwd: "/Users/veer/Documents/Obsidian Vault/bitwise",
+            updatedAt: 100
+        )
+        let droppy = codexThread(
+            id: "droppy",
+            cwd: "/Users/veer/Documents/Droppy Copy",
+            updatedAt: 200
+        )
+        let newerBitwise = codexThread(
+            id: "bitwise-new",
+            cwd: "/Users/veer/Codex/Bitwise",
+            updatedAt: 300
+        )
+        let temporary = codexThread(
+            id: "temporary",
+            cwd: "/private/var/folders/example/BigIntegerLab4.java123",
+            updatedAt: 400
+        )
+
+        let projects = CodexFeature.dashboardGroups(from: [
+            olderBitwise,
+            droppy,
+            newerBitwise,
+            temporary,
+        ])
+
+        XCTAssertEqual(projects.map(\.name), ["Bitwise", "Droppy", "Normal Chats"])
+        XCTAssertEqual(projects[0].threads.map(\.id), ["bitwise-new", "bitwise-old"])
+        XCTAssertEqual(projects[1].threads.map(\.id), ["droppy"])
+        XCTAssertEqual(projects[2].threads.map(\.id), ["temporary"])
+        XCTAssertEqual(projects[2].kind, .normalChats)
+    }
+
+    @MainActor
+    func testCodexProjectSearchCanFindRecentProjectsAndNormalChatSources() {
+        let threads = [
+            codexThread(id: "one", cwd: "/Users/veer/Documents/Droppy Copy", updatedAt: 200),
+            codexThread(id: "two", cwd: "/Users/veer/Codex/Compsci", updatedAt: 100),
+        ]
+
+        let droppyProjects = CodexFeature.dashboardGroups(from: threads, matching: "droppy")
+        let normalProjects = CodexFeature.dashboardGroups(from: threads, matching: "compsci")
+
+        XCTAssertEqual(droppyProjects.map(\.name), ["Droppy"])
+        XCTAssertEqual(droppyProjects[0].threads.map(\.id), ["one"])
+        XCTAssertEqual(normalProjects.map(\.name), ["Normal Chats"])
+        XCTAssertEqual(normalProjects[0].threads.map(\.id), ["two"])
+    }
+
+    @MainActor
+    func testCodexNewTaskOffersOnlyNamedRecentProjects() {
+        let suiteName = "DroppyTests.CodexRecentProjects.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName)!
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+        let feature = CodexFeature(defaults: defaults)
+
+        XCTAssertEqual(feature.availableProjects, [
+            CodexProjectOption(
+                id: "apush",
+                name: "APUSH",
+                path: "/Users/veer/Documents/APUSH"
+            ),
+            CodexProjectOption(
+                id: "bitwise",
+                name: "Bitwise",
+                path: "/Users/veer/Codex/Bitwise"
+            ),
+            CodexProjectOption(
+                id: "droppy",
+                name: "Droppy",
+                path: "/Users/veer/Documents/Droppy Copy"
+            ),
+        ])
+    }
+
+    @MainActor
+    func testCodexUsageDisplaysRemainingPercentage() {
+        XCTAssertEqual(CodexFeature.remainingPercent(fromUsedPercent: 35), 65)
+        XCTAssertEqual(CodexFeature.remainingPercent(fromUsedPercent: 120), 0)
+        XCTAssertEqual(CodexFeature.remainingPercent(fromUsedPercent: -5), 100)
+    }
+
+    private func codexThread(
+        id: String,
+        cwd: String,
+        updatedAt: TimeInterval
+    ) -> CodexThreadSummary {
+        CodexThreadSummary(
+            id: id,
+            title: id,
+            preview: "",
+            cwd: cwd,
+            status: .idle,
+            model: nil,
+            updatedAt: Date(timeIntervalSince1970: updatedAt)
+        )
+    }
+
+    @MainActor
+    func testCodexInputsSendImagesNativelyAndListOtherLocalFiles() {
+        let image = CodexDraftAttachment(url: URL(fileURLWithPath: "/tmp/mockup.png"))
+        let document = CodexDraftAttachment(url: URL(fileURLWithPath: "/tmp/notes.pdf"))
+
+        let inputs = CodexFeature.userInputs(
+            prompt: "Review these",
+            attachments: [image, document]
+        )
+
+        XCTAssertEqual(inputs.count, 2)
+        XCTAssertEqual(inputs[0]["type"] as? String, "text")
+        XCTAssertTrue((inputs[0]["text"] as? String)?.contains("/tmp/notes.pdf") == true)
+        XCTAssertEqual(inputs[1]["type"] as? String, "localImage")
+        XCTAssertEqual(inputs[1]["path"] as? String, "/tmp/mockup.png")
     }
 
     @MainActor

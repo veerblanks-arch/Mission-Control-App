@@ -16,11 +16,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private lazy var settingsWindowController = SettingsWindowController(
         permissionsManager: permissionsManager
     )
+    private lazy var codexAgentStatusItemController = CodexAgentStatusItemController(
+        feature: codex,
+        onOpenThread: { [weak self] threadID in
+            self?.statusItemController.showCodex(threadID: threadID)
+        }
+    )
     private let permissionsManager = PermissionsManager()
     private let clipboardManager = ClipboardManagerFeature.shared
     private let shelf = ShelfFeature.shared
     private let terminal = TerminalFeature.shared
     private let media = MediaFeature.shared
+    private let codex = CodexFeature.shared
     private let notes = NotesFeature.shared
     private lazy var dropZoneCoordinator = DropZoneCoordinator(shelf: shelf)
     private lazy var snippetCaptureCoordinator = SnippetCaptureCoordinator(
@@ -62,6 +69,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         clipboardManager.start()
         statusItemController.start()
+        codex.start()
+        codexAgentStatusItemController.start()
         dropZoneCoordinator.start()
 
 #if DEBUG
@@ -161,6 +170,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationWillTerminate(_ notification: Notification) {
         notes.flushPendingSave()
         media.stop()
+        codexAgentStatusItemController.stop()
+        codex.stop()
         terminal.stopAll()
         dropZoneCoordinator.stop()
         clipboardManager.stop()

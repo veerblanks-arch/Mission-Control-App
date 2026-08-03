@@ -37,7 +37,12 @@ Date: 2026-07-28
 - Clipboard history: seven days, searchable, pinned items retained.
 - Calendar is out of scope; use the existing calendar app directly.
 - Media: Apple Music mini-player only; no separate navigation destination.
-- Codex: official App Server, safe dashboard and replies first.
+- Codex: official App Server, with existing tasks shown as read-only saved
+  history in Droppy. Opening an existing task never resumes it; live updates
+  and replies occur in Codex through `Open in Codex`. Droppy can create and run
+  only the initial task through its own App Server. A separate supported App
+  Server process cannot report live status for chats currently owned by the
+  Codex desktop runtime.
 - Notes: separate and local.
 - Terminal: embedded command runner for project scripts, with Apple Terminal
   as the default external fallback and configurable adapters later.
@@ -156,5 +161,24 @@ Date: 2026-07-28
   switching. Eleven focused Apple Music tests passed, the canonical
   `Builds/Droppy.app` build succeeded, and the user accepted the live target-Mac
   result.
-- Phase 7 Codex is next, but it has not started and still requires explicit user
-  authorization.
+- Phase 7 Codex: implemented and verified in code, but target-Mac acceptance
+  and the local commit are pending. Do not mark accepted yet. Existing tasks
+  are read-only saved history in Droppy and opening them never resumes them;
+  live updates and replies occur in Codex through `Open in Codex`. Droppy can
+  create and run only the initial task through its own App Server. The verified
+  scope retains project search, role, attachments, and usage indicators; the
+  dashboard groups the complete paginated non-archived task history into APUSH,
+  Bitwise, Droppy, and a single `Normal Chats` fallback, with each group
+  expanding to show all of its chats; the
+  New Task picker offers only APUSH, Bitwise, and Droppy, plus an intentional
+  `Choose Folder...` escape hatch; the
+  always-visible four-role strip represents only Droppy-managed active initial
+  tasks in its dropdowns; and
+  external tasks have a generic chat identity with no invented agent role.
+  Completion feedback briefly highlights the exact chat row and open-chat
+  banner, never the agent icon. The live check found the Desktop task
+  active while Droppy's separate App Server reported `notLoaded` but could read
+  persisted history. The final correction pass executed 74 tests with zero
+  failures, and `Scripts/build-debug.sh` produced the canonical
+  `Builds/Droppy.app` successfully. Target-Mac acceptance and the local commit
+  remain pending.

@@ -52,6 +52,11 @@ final class StatusItemController: NSObject {
         )
     }
 
+    func showCodex(threadID: String? = nil) {
+        guard let button = statusItem?.button else { return }
+        overlayPanelController.showCodex(relativeTo: button, threadID: threadID)
+    }
+
     @objc private func statusItemClicked(_ sender: NSStatusBarButton) {
         let event = NSApp.currentEvent
         if event?.type == .rightMouseUp || event?.modifierFlags.contains(.control) == true {
