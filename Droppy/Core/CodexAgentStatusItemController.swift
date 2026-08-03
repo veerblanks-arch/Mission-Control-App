@@ -40,11 +40,9 @@ final class CodexAgentStatusItemController: NSObject {
         for (index, role) in CodexAgentRole.allCases.enumerated() {
             let button = NSButton()
             button.isBordered = false
-            button.image = NSImage(
-                systemSymbolName: role.symbolName,
-                accessibilityDescription: role.title
-            )
+            button.image = petImage(for: role)
             button.imagePosition = .imageOnly
+            button.imageScaling = .scaleProportionallyDown
             button.toolTip = role.title
             button.tag = index
             button.target = self
@@ -56,8 +54,9 @@ final class CodexAgentStatusItemController: NSObject {
 
         statusItem = item
         feature.$threads
+            .combineLatest(feature.$managedThreadIDs)
             .receive(on: RunLoop.main)
-            .sink { [weak self] _ in self?.refreshState() }
+            .sink { [weak self] _, _ in self?.refreshState() }
             .store(in: &cancellables)
         refreshState()
     }
@@ -73,7 +72,8 @@ final class CodexAgentStatusItemController: NSObject {
         statusItem?.isVisible = true
         for role in CodexAgentRole.allCases {
             let count = feature.runningThreads(for: role).count
-            roleButtons[role]?.contentTintColor = count > 0 ? .controlAccentColor : .secondaryLabelColor
+            roleButtons[role]?.contentTintColor = .white
+            roleButtons[role]?.alphaValue = count > 0 ? 1 : 0.72
             roleButtons[role]?.toolTip = count == 1
                 ? "\(role.title): 1 running chat"
                 : "\(role.title): \(count) running chats"
@@ -108,6 +108,26 @@ final class CodexAgentStatusItemController: NSObject {
     @objc private func openThread(_ sender: NSMenuItem) {
         guard let threadID = sender.representedObject as? String else { return }
         onOpenThread(threadID)
+    }
+
+    private func petImage(for role: CodexAgentRole) -> NSImage? {
+        let image: NSImage?
+        if
+            let url = Bundle.main.url(
+                forResource: role.petTemplateAssetName,
+                withExtension: "png"
+            )
+        {
+            image = NSImage(contentsOf: url)
+        } else {
+            image = NSImage(
+                systemSymbolName: role.symbolName,
+                accessibilityDescription: role.title
+            )
+        }
+        image?.isTemplate = true
+        image?.size = NSSize(width: 18, height: 18)
+        return image
     }
 
 }

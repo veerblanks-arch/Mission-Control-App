@@ -25,6 +25,19 @@ enum CodexAgentRole: String, CaseIterable, Codable, Identifiable {
         case .reviewer: return "checkmark.seal"
         }
     }
+
+    var petAssetName: String {
+        switch self {
+        case .planner: return "planner-owl"
+        case .builderA: return "builder-a-beaver"
+        case .builderB: return "builder-b-fox"
+        case .reviewer: return "reviewer-cat"
+        }
+    }
+
+    var petTemplateAssetName: String {
+        "\(petAssetName)-template"
+    }
 }
 
 enum CodexRuntimeStatus: Equatable {

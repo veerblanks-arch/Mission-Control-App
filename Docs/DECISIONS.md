@@ -37,12 +37,23 @@ Date: 2026-07-28
 - Clipboard history: seven days, searchable, pinned items retained.
 - Calendar is out of scope; use the existing calendar app directly.
 - Media: Apple Music mini-player only; no separate navigation destination.
-- Codex: official App Server, with existing tasks shown as read-only saved
-  history in Droppy. Opening an existing task never resumes it; live updates
-  and replies occur in Codex through `Open in Codex`. Droppy can create and run
-  only the initial task through its own App Server. A separate supported App
-  Server process cannot report live status for chats currently owned by the
-  Codex desktop runtime.
+- Codex: official App Server. Codex-created tasks remain read-only saved
+  history in Droppy and opening them never resumes them. Droppy-created tasks
+  support streamed responses and follow-up turns while Droppy owns them.
+  `Hand Off` calls `thread/unsubscribe`, removes Droppy's role ownership, and
+  then opens Codex. Droppy remembers that task's agent role, and an idle handed-
+  off task can use `Bring Back` to call `thread/resume`, restore its original
+  role, reload the same history, and accept live Droppy replies again. Tasks
+  that originated outside Droppy remain read-only. A separate supported App
+  Server process cannot reliably report live status for chats currently owned
+  by the Codex desktop runtime, so take-back is blocked whenever the observed
+  status is active and rechecked after resume.
+- The four agent roles use a generated miniature pet family instead of SF
+  Symbols: Planner owl, Builder A beaver, Builder B fox, and Reviewer cat.
+  Menu-bar variants are adaptive template masks with white high-contrast tint.
+- New-task UI uses the accepted `thread/start` and `turn/start` state directly;
+  it does not immediately depend on a readable rollout file. History loading
+  retries only the known transient empty-session-metadata race.
 - Notes: separate and local.
 - Terminal: embedded command runner for project scripts, with Apple Terminal
   as the default external fallback and configurable adapters later.
@@ -164,21 +175,22 @@ Date: 2026-07-28
 - Phase 7 Codex: implemented and verified in code, but target-Mac acceptance
   and the local commit are pending. Do not mark accepted yet. Existing tasks
   are read-only saved history in Droppy and opening them never resumes them;
-  live updates and replies occur in Codex through `Open in Codex`. Droppy can
-  create and run only the initial task through its own App Server. The verified
+  Droppy-owned tasks support streamed responses and follow-up turns through
+  its App Server, while `Hand Off` unsubscribes Droppy before opening Codex.
+  The verified
   scope retains project search, role, attachments, and usage indicators; the
   dashboard groups the complete paginated non-archived task history into APUSH,
   Bitwise, Droppy, and a single `Normal Chats` fallback, with each group
   expanding to show all of its chats; the
   New Task picker offers only APUSH, Bitwise, and Droppy, plus an intentional
   `Choose Folder...` escape hatch; the
-  always-visible four-role strip represents only Droppy-managed active initial
-  tasks in its dropdowns; and
+  always-visible four-pet strip represents only Droppy-managed active tasks in
+  its dropdowns; and
   external tasks have a generic chat identity with no invented agent role.
   Completion feedback briefly highlights the exact chat row and open-chat
   banner, never the agent icon. The live check found the Desktop task
   active while Droppy's separate App Server reported `notLoaded` but could read
-  persisted history. The final correction pass executed 74 tests with zero
+  persisted history. The final mobility pass executed 78 tests with zero
   failures, and `Scripts/build-debug.sh` produced the canonical
   `Builds/Droppy.app` successfully. Target-Mac acceptance and the local commit
   remain pending.

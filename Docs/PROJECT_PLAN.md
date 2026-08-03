@@ -84,11 +84,19 @@ notifications, then dismisses according to the behavior of that feature.
   of its non-archived chats; thread-list pagination must be followed until
   exhausted rather than stopping at the first page. Project search may surface
   `Normal Chats` when one of its original working directories matches.
-- Show existing tasks as read-only saved history: task title, project, status,
-  recent exchange, and the exact model returned when Droppy starts its own
-  task, cached per chat. Opening an existing task never resumes it.
-- Live updates and replies occur in Codex through `Open in Codex`.
-- Droppy can create and run only the initial task through its own App Server.
+- Show Codex-created tasks as read-only saved history: task title, project,
+  status, recent exchange, and model when available. Opening an external task
+  never resumes it.
+- Droppy-created tasks remain live in Droppy: the active response streams into
+  the opened chat, and each idle task accepts follow-up messages and file
+  attachments through the same App Server. After relaunch, a still-managed
+  saved task is resumed only when the user sends a new reply.
+- `Hand Off` is available after the current response finishes. It unsubscribes
+  Droppy, removes the local role ownership, and only then opens the task in
+  Codex. Droppy persists the handed-off task's original role. When the task is
+  idle, `Bring Back` resumes that same thread through Droppy's App Server,
+  restores the role, reloads its history, and makes replies live in Droppy
+  again. Tasks that did not originate in Droppy remain read-only.
 - Show remaining account capacity as a simple percentage (`100 - usedPercent`).
   Keep it visible in both the dashboard and opened chats.
 - File drops open a reviewable new-task composer. Images attach directly;
@@ -98,10 +106,13 @@ notifications, then dismisses according to the behavior of that feature.
   Builder B, or Reviewer. The project picker is limited to APUSH, Bitwise, and
   Droppy, with `Choose Folder...` available for an intentional one-off path.
   Tasks use the current Codex default model.
-- A single compact four-role strip sits at the top right beside the Droppy
-  logo and remains visible even when no chats are running. Clicking a role
-  opens its running-chat dropdown; an idle role shows `No running chats`.
-- The four-role strip represents only Droppy-managed active initial tasks.
+- A single compact four-pet strip sits at the top right beside the Droppy logo
+  and remains visible even when no chats are running. Planner is an owl,
+  Builder A a beaver, Builder B a fox, and Reviewer a cat. The menu-bar masks
+  render white at high contrast; opened task rows retain the full pet artwork.
+  Clicking a pet opens its running-chat dropdown; an idle role shows
+  `No running chats`.
+- The four-pet strip represents only Droppy-managed active tasks.
   External tasks have a generic chat identity and no invented agent role.
 - A completed Droppy-managed task briefly highlights its exact chat row and, if
   open, its chat status banner. The role-strip icon does not animate. Reduced
@@ -110,6 +121,10 @@ notifications, then dismisses according to the behavior of that feature.
   Codex. Protected approval and input prompts are cancelled safely by the
   integration.
 - A bounded App Server reconnect handles transient process exits.
+- A newly started task is shown from its accepted turn immediately instead of
+  reading the just-created rollout synchronously. Background history reads
+  retry only the transient empty-session-metadata error with bounded backoff;
+  other thread-read errors remain visible.
 - A separate supported App Server process cannot claim live status for chats
   currently owned by the Codex desktop runtime. In the live check, the Desktop
   task was active while Droppy's separate App Server reported `notLoaded` but
@@ -209,10 +224,12 @@ single `Normal Chats` fallback, project-only search, project-and-role task
 creation limited to APUSH, Bitwise, and Droppy plus `Choose Folder...`, a
 saved-history viewer with `Open in Codex`,
 remaining capacity in the dashboard and opened histories, exact returned model
-caching for Droppy-started tasks, the top-right four-role strip for
-Droppy-managed active initial tasks, generic identity for external tasks,
+caching for Droppy-started tasks, live follow-up messages for Droppy-owned
+tasks, bidirectional persisted `Hand Off`/`Bring Back` mobility using
+unsubscribe and resume, the top-right
+four-pet strip for Droppy-managed active tasks, generic identity for external tasks,
 exact-chat completion feedback with Reduced Motion, and the persisted-history
-live-status finding documented above. The final correction pass executed 74
+live-status finding documented above. The final mobility pass executed 78
 tests with zero failures, and `Scripts/build-debug.sh` produced the canonical
 `Builds/Droppy.app` successfully. Target-Mac acceptance and the local commit
 remain pending.

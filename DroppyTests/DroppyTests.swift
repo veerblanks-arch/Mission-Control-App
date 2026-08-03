@@ -143,6 +143,53 @@ final class DroppyTests: XCTestCase {
     }
 
     @MainActor
+    func testOnlyPersistedHandedOffTasksCanBeBroughtBack() throws {
+        let suiteName = "DroppyTests.CodexHandedOffRole.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName)!
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+        defaults.set(
+            try JSONEncoder().encode(["handed-off-thread": CodexAgentRole.reviewer]),
+            forKey: "codexHandedOffRoleAssignments"
+        )
+        let feature = CodexFeature(defaults: defaults)
+        let handedOff = codexThread(id: "handed-off-thread", cwd: "/tmp", updatedAt: 1)
+        let external = codexThread(id: "external-thread", cwd: "/tmp", updatedAt: 1)
+
+        XCTAssertTrue(feature.wasHandedOffToCodex(handedOff.id))
+        XCTAssertFalse(feature.isDroppyManaged(handedOff.id))
+        XCTAssertTrue(feature.canBringBackToDroppy(handedOff))
+        XCTAssertFalse(feature.canBringBackToDroppy(handedOff.replacing(status: .running)))
+        XCTAssertFalse(feature.canBringBackToDroppy(external))
+    }
+
+    @MainActor
+    func testCodexLiveRepliesRequireAnIdleDroppyManagedThread() throws {
+        let suiteName = "DroppyTests.CodexLiveReply.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName)!
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+        defaults.set(
+            try JSONEncoder().encode(["managed-thread": CodexAgentRole.planner]),
+            forKey: "codexThreadRoleAssignments"
+        )
+        let feature = CodexFeature(defaults: defaults)
+        let managed = codexThread(id: "managed-thread", cwd: "/tmp", updatedAt: 1)
+        let external = codexThread(id: "external-thread", cwd: "/tmp", updatedAt: 1)
+
+        XCTAssertTrue(feature.canSendReply(to: managed))
+        XCTAssertFalse(feature.canSendReply(to: managed.replacing(status: .running)))
+        XCTAssertFalse(feature.canSendReply(to: managed.replacing(status: .waiting)))
+        XCTAssertFalse(feature.canSendReply(to: external))
+    }
+
+    func testCodexRolesUseDistinctPetAssets() {
+        XCTAssertEqual(
+            CodexAgentRole.allCases.map(\.petAssetName),
+            ["planner-owl", "builder-a-beaver", "builder-b-fox", "reviewer-cat"]
+        )
+        XCTAssertEqual(Set(CodexAgentRole.allCases.map(\.petTemplateAssetName)).count, 4)
+    }
+
+    @MainActor
     func testCodexThreadParsingUsesNameProjectAndRecency() throws {
         let summary = try XCTUnwrap(CodexFeature.parseThread(
             [
@@ -248,6 +295,19 @@ final class DroppyTests: XCTestCase {
         XCTAssertEqual(CodexFeature.remainingPercent(fromUsedPercent: 35), 65)
         XCTAssertEqual(CodexFeature.remainingPercent(fromUsedPercent: 120), 0)
         XCTAssertEqual(CodexFeature.remainingPercent(fromUsedPercent: -5), 100)
+    }
+
+    @MainActor
+    func testCodexRetriesOnlyTransientEmptyRolloutReads() {
+        XCTAssertTrue(CodexFeature.isTransientEmptyThreadReadError(
+            "failed to read thread: thread-store internal error: failed to read session metadata /Users/example/rollout.jsonl: rollout at /Users/example/rollout.jsonl is empty"
+        ))
+        XCTAssertFalse(CodexFeature.isTransientEmptyThreadReadError(
+            "failed to read thread: permission denied"
+        ))
+        XCTAssertFalse(CodexFeature.isTransientEmptyThreadReadError(
+            "thread response is empty"
+        ))
     }
 
     private func codexThread(

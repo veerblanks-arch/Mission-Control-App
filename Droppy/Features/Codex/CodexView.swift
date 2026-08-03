@@ -190,20 +190,26 @@ private struct CodexThreadRow: View {
 
     var body: some View {
         HStack(spacing: 12) {
-            Image(systemName: isRecentlyCompleted
-                ? "checkmark.circle.fill"
-                : role?.symbolName ?? "bubble.left.and.text.bubble.right")
-                .font(.system(size: 15, weight: .semibold))
-                .foregroundStyle(
-                    isRecentlyCompleted
-                        ? Color.green
-                        : thread.status == .failed ? Color.red : Color.accentColor
-                )
-                .frame(width: 30, height: 30)
-                .background(
-                    (isRecentlyCompleted ? Color.green : Color.accentColor).opacity(0.1),
-                    in: RoundedRectangle(cornerRadius: 7)
-                )
+            Group {
+                if isRecentlyCompleted {
+                    Image(systemName: "checkmark.circle.fill")
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundStyle(Color.green)
+                } else if let role {
+                    CodexPetIcon(role: role, size: 25)
+                } else {
+                    Image(systemName: "bubble.left.and.text.bubble.right")
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundStyle(
+                            thread.status == .failed ? Color.red : Color.accentColor
+                        )
+                }
+            }
+            .frame(width: 30, height: 30)
+            .background(
+                (isRecentlyCompleted ? Color.green : Color.accentColor).opacity(0.1),
+                in: RoundedRectangle(cornerRadius: 7)
+            )
 
             VStack(alignment: .leading, spacing: 4) {
                 Text(thread.title)
@@ -253,12 +259,43 @@ private struct CodexThreadRow: View {
     }
 }
 
+private struct CodexPetIcon: View {
+    let role: CodexAgentRole
+    let size: CGFloat
+
+    var body: some View {
+        if
+            let url = Bundle.main.url(
+                forResource: role.petAssetName,
+                withExtension: "png"
+            ),
+            let image = NSImage(contentsOf: url)
+        {
+            Image(nsImage: image)
+                .resizable()
+                .interpolation(.high)
+                .scaledToFit()
+                .frame(width: size, height: size)
+                .accessibilityLabel("\(role.title) Codex pet")
+        } else {
+            Image(systemName: role.symbolName)
+                .font(.system(size: size * 0.62, weight: .semibold))
+                .foregroundStyle(Color.accentColor)
+                .frame(width: size, height: size)
+        }
+    }
+}
+
 private struct CodexChatView: View {
     @ObservedObject var feature: CodexFeature
     let thread: CodexThreadSummary
+    @State private var reply = ""
+    @State private var attachments: [CodexDraftAttachment] = []
 
     var body: some View {
-        let isDroppyActive = feature.isDroppyManaged(thread.id) && thread.status.isActive
+        let isDroppyManaged = feature.isDroppyManaged(thread.id)
+        let wasHandedOff = feature.wasHandedOffToCodex(thread.id)
+        let isDroppyActive = isDroppyManaged && thread.status.isActive
         let isRecentlyCompleted = feature.recentlyCompletedThreadIDs.contains(thread.id)
 
         VStack(spacing: 0) {
@@ -304,17 +341,51 @@ private struct CodexChatView: View {
                 .help("Refresh saved history")
 
                 Button {
-                    feature.openInCodex(thread.id)
+                    if isDroppyManaged {
+                        feature.handOffToCodex(thread.id)
+                    } else if wasHandedOff {
+                        feature.bringBackToDroppy(thread.id)
+                    } else {
+                        feature.openInCodex(thread.id)
+                    }
                 } label: {
-                    Label("Open in Codex", systemImage: "arrow.up.forward.app")
+                    Label(
+                        isDroppyManaged
+                            ? "Hand Off"
+                            : wasHandedOff ? "Bring Back" : "Open in Codex",
+                        systemImage: wasHandedOff
+                            ? "arrow.down.backward.circle"
+                            : "arrow.up.forward.app"
+                    )
                 }
                 .buttonStyle(.bordered)
                 .controlSize(.small)
-                .disabled(isDroppyActive)
+                .disabled(
+                    isDroppyManaged
+                        && (
+                            thread.status.isRunning
+                                || feature.isHandingOff
+                                || feature.isTakingBack
+                                || feature.isSending
+                        )
+                        || wasHandedOff
+                        && (
+                            thread.status.isActive
+                                || feature.isTakingBack
+                                || feature.isHandingOff
+                                || feature.isSending
+                        )
+                )
                 .help(
-                    isDroppyActive
-                        ? "Wait for the Droppy-started task to finish before opening it in Codex"
-                        : "Open this task in Codex for live updates and replies"
+                    isDroppyManaged
+                        ? thread.status.isRunning
+                            ? "Wait for the current response before handing this task to Codex"
+                            : "Release Droppy's live session and continue this task in Codex"
+                        : wasHandedOff
+                        ? thread.status.isActive
+                            ? "Wait for the current Codex response before bringing this task back"
+                            : "Resume this same task as a live Droppy chat"
+                        : "Open this saved task in Codex"
                 )
             }
             .padding(12)
@@ -325,10 +396,16 @@ private struct CodexChatView: View {
                 Image(systemName: isRecentlyCompleted ? "checkmark.circle.fill" : "info.circle.fill")
                 Text(
                     isRecentlyCompleted
-                        ? "This chat just finished. Its saved history is now up to date."
+                        ? "This chat just finished. You can reply below or hand it off to Codex."
+                        : thread.status == .waiting
+                        ? "This task needs attention. Hand it off to Codex to review the request."
                         : isDroppyActive
-                        ? "This initial task is active in Droppy. Open it in Codex after it finishes."
-                        : "Saved history only. Open in Codex for live updates and replies."
+                        ? "Live in Droppy. The current response is streaming into this chat."
+                        : isDroppyManaged
+                        ? "Live Droppy chat. Reply below, or hand it off to continue in Codex."
+                        : wasHandedOff
+                        ? "Handed off to Codex. Bring it back to continue this same task in Droppy."
+                        : "Saved history only. Open in Codex to continue this task."
                 )
                 Spacer()
             }
@@ -365,6 +442,29 @@ private struct CodexChatView: View {
                 }
             }
 
+            if isDroppyManaged {
+                Divider()
+                CodexComposer(
+                    text: $reply,
+                    attachments: $attachments,
+                    isSending: feature.isSending || thread.status.isActive || feature.isHandingOff,
+                    sendTitle: thread.status == .waiting
+                        ? "Needs Attention"
+                        : thread.status.isRunning ? "Running" : "Send"
+                ) {
+                    feature.sendReply(
+                        prompt: reply,
+                        attachments: attachments,
+                        to: thread
+                    ) { succeeded in
+                        if succeeded {
+                            reply = ""
+                            attachments = []
+                        }
+                    }
+                }
+            }
+
             if let issue = feature.lastIssue {
                 HStack(alignment: .top, spacing: 8) {
                     Image(systemName: "exclamationmark.triangle.fill")
@@ -372,8 +472,27 @@ private struct CodexChatView: View {
                     Text(issue)
                         .font(.system(size: 10))
                     Spacer()
-                    Button("Open in Codex") { feature.openInCodex(thread.id) }
+                    Button(
+                        isDroppyManaged
+                            ? "Hand Off"
+                            : wasHandedOff ? "Bring Back" : "Open in Codex"
+                    ) {
+                        if isDroppyManaged {
+                            feature.handOffToCodex(thread.id)
+                        } else if wasHandedOff {
+                            feature.bringBackToDroppy(thread.id)
+                        } else {
+                            feature.openInCodex(thread.id)
+                        }
+                    }
                         .buttonStyle(.link)
+                        .disabled(
+                            feature.isHandingOff
+                                || feature.isTakingBack
+                                || feature.isSending
+                                || (isDroppyManaged && thread.status.isRunning)
+                                || (wasHandedOff && thread.status.isActive)
+                        )
                 }
                 .padding(.horizontal, 12)
                 .padding(.vertical, 7)
