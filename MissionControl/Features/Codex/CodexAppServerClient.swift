@@ -17,6 +17,7 @@ final class CodexAppServerClient {
     private var errorBuffer = Data()
     private var nextRequestID = 1
     private var initializeRequestID: Int?
+    private var isInitialized = false
     private var startCompletion: ((Result<Void, Error>) -> Void)?
     private var pending: [Int: Completion] = [:]
 
@@ -27,9 +28,12 @@ final class CodexAppServerClient {
     func start(completion: @escaping (Result<Void, Error>) -> Void) {
         queue.async { [weak self] in
             guard let self else { return }
-            if self.process?.isRunning == true {
+            if self.process?.isRunning == true, self.isInitialized {
                 DispatchQueue.main.async { completion(.success(())) }
                 return
+            }
+            if self.process?.isRunning == true {
+                self.stopLocked()
             }
 
             guard let executableURL = Self.codexExecutableURL() else {
@@ -54,6 +58,7 @@ final class CodexAppServerClient {
             self.outputPipe = output
             self.errorPipe = errors
             self.startCompletion = completion
+            self.isInitialized = false
             self.outputBuffer.removeAll(keepingCapacity: true)
             self.errorBuffer.removeAll(keepingCapacity: true)
 
@@ -77,8 +82,8 @@ final class CodexAppServerClient {
                     method: "initialize",
                     params: [
                         "clientInfo": [
-                            "name": "droppy",
-                            "title": "Droppy",
+                            "name": "mission-control",
+                            "title": "Mission Control",
                             "version": Bundle.main.object(
                                 forInfoDictionaryKey: "CFBundleShortVersionString"
                             ) as? String ?? "0.1.0",
@@ -104,7 +109,11 @@ final class CodexAppServerClient {
         completion: @escaping Completion
     ) {
         queue.async { [weak self] in
-            guard let self, self.process?.isRunning == true else {
+            guard
+                let self,
+                self.process?.isRunning == true,
+                self.isInitialized
+            else {
                 DispatchQueue.main.async { completion(.failure(CodexFeatureError.unavailable)) }
                 return
             }
@@ -157,11 +166,18 @@ final class CodexAppServerClient {
                 initializeRequestID = nil
                 if let error = object["error"] as? JSONObject {
                     finishStart(.failure(Self.error(from: error)))
+                    stopLocked()
+                    return
+                }
+                guard let result = object["result"] as? JSONObject else {
+                    finishStart(.failure(CodexFeatureError.malformedResponse))
+                    stopLocked()
                     return
                 }
                 writeLocked(["method": "initialized", "params": [:]])
+                isInitialized = true
                 let completion = pending.removeValue(forKey: requestID)
-                DispatchQueue.main.async { completion?(.success(object)) }
+                DispatchQueue.main.async { completion?(.success(result)) }
                 finishStart(.success(()))
                 return
             }
@@ -169,9 +185,12 @@ final class CodexAppServerClient {
             guard let completion = pending.removeValue(forKey: requestID) else { return }
             if let error = object["error"] as? JSONObject {
                 DispatchQueue.main.async { completion(.failure(Self.error(from: error))) }
-            } else {
-                let result = object["result"] as? JSONObject ?? [:]
+            } else if let result = object["result"] as? JSONObject {
                 DispatchQueue.main.async { completion(.success(result)) }
+            } else {
+                DispatchQueue.main.async {
+                    completion(.failure(CodexFeatureError.malformedResponse))
+                }
             }
             return
         }
@@ -192,15 +211,28 @@ final class CodexAppServerClient {
             self?.onProtectedRequest?(method, params)
         }
 
-        if method.contains("requestApproval") {
-            writeLocked(["id": id, "result": ["decision": "cancel"]])
-        } else if method == "item/tool/requestUserInput" {
-            writeLocked(["id": id, "result": ["answers": [:]]])
+        if let result = Self.safeRejectionResult(for: method) {
+            writeLocked(["id": id, "result": result])
         } else {
             writeLocked([
                 "id": id,
                 "error": ["code": -32601, "message": "Handled in the Codex app"],
             ])
+        }
+    }
+
+    static func safeRejectionResult(for method: String) -> JSONObject? {
+        switch method {
+        case "item/commandExecution/requestApproval", "item/fileChange/requestApproval":
+            return ["decision": "cancel"]
+        case "item/permissions/requestApproval":
+            return ["permissions": JSONObject()]
+        case "mcpServer/elicitation/request":
+            return ["action": "cancel", "content": NSNull()]
+        case "item/tool/requestUserInput", "tool/requestUserInput":
+            return ["answers": JSONObject()]
+        default:
+            return nil
         }
     }
 
@@ -221,6 +253,8 @@ final class CodexAppServerClient {
         let completions = pending.values
         pending.removeAll()
         process = nil
+        isInitialized = false
+        initializeRequestID = nil
         inputPipe = nil
         outputPipe = nil
         errorPipe = nil
@@ -233,10 +267,14 @@ final class CodexAppServerClient {
     private func stopLocked() {
         outputPipe?.fileHandleForReading.readabilityHandler = nil
         errorPipe?.fileHandleForReading.readabilityHandler = nil
-        if process?.isRunning == true {
-            process?.terminate()
+        let processToStop = process
+        processToStop?.terminationHandler = nil
+        if processToStop?.isRunning == true {
+            processToStop?.terminate()
         }
         process = nil
+        isInitialized = false
+        initializeRequestID = nil
         inputPipe = nil
         outputPipe = nil
         errorPipe = nil

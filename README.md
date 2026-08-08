@@ -25,7 +25,7 @@ collection of separate windows.
 - **Apple Music** exposes a compact player with artwork, transport controls, and
   progress while music is available.
 - **Codex workspace** organizes project chats, starts new tasks with a project
-  and role, shows live responses for tasks created in Mission Control, and
+  and visual task label, shows live responses for tasks created in Mission Control, and
   opens external task history without pretending to own those sessions.
 - **Unified Search** ranks results across Clipboard, Shelf, Files, and Notes.
 
@@ -58,21 +58,22 @@ From the repository root:
 ./Scripts/build-debug.sh
 ```
 
-The debug application is written to `Builds/MissionControl.app` by the current build
-script. To run the debug target with the standard launch arguments, use:
+The debug application is written to `Builds/Droppy.app` for compatibility with
+the existing encrypted clipboard Keychain authorization. Its visible app name,
+menus, and accessibility identity are Mission Control. To run the debug target
+with the standard launch arguments, use:
 
 ```bash
 ./Scripts/run-debug.sh
 ```
 
-To run the test suite in Xcode, select the `Droppy` scheme and run the tests.
+To run the test suite in Xcode, select the `MissionControl` scheme and run the tests.
 
 ## Project layout
 
 ```text
-MissionControl/ Swift and AppKit application code
 MissionControl/         Clipboard, Shelf, Files, Notes, Terminal, Music, and Codex
-DroppyTests/             Unit and integration-focused tests
+MissionControlTests/    Unit and integration-focused tests
 Scripts/                 Local build and debug helpers
 Docs/                    Product decisions and implementation notes
 ```

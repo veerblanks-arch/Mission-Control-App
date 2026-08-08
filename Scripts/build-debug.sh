@@ -8,19 +8,20 @@ derived_data="$repo_root/.DerivedData"
 products_dir="$repo_root/Builds"
 product="$derived_data/Build/Products/Debug/Droppy.app"
 output="$products_dir/Droppy.app"
+renamed_output="$products_dir/MissionControl.app"
 
 mkdir -p "$products_dir"
 
 xcodebuild \
     -project "$repo_root/MissionControl.xcodeproj" \
-    -scheme Droppy \
+    -scheme MissionControl \
     -configuration Debug \
     -destination "platform=macOS,arch=arm64" \
     -derivedDataPath "$derived_data" \
     CODE_SIGNING_ALLOWED=NO \
     build
 
-staging_dir="$(mktemp -d "$products_dir/.droppy-stage.XXXXXX")"
+staging_dir="$(mktemp -d "$products_dir/.mission-control-stage.XXXXXX")"
 trap 'rm -rf "$staging_dir"' EXIT
 
 ditto "$product" "$staging_dir/Droppy.app"
@@ -30,6 +31,10 @@ mv "$staging_dir/Droppy.app" "$output"
 launch_services="/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister"
 "$launch_services" -u "$product" >/dev/null 2>&1 || true
 rm -rf "$product"
+if [[ -d "$renamed_output" ]]; then
+    "$launch_services" -u "$renamed_output" >/dev/null 2>&1 || true
+    rm -rf "$renamed_output"
+fi
 "$launch_services" -f -R -trusted "$output"
 
 echo "$output"

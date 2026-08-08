@@ -7,7 +7,7 @@ final class PermissionsManager {
 
     var onboardingMessage: String {
         """
-        Droppy now lives in the menu bar. Phase 0 does not need special permissions, but later clipboard, drag monitoring, and media features may ask for local-only macOS permissions here.
+        Mission Control lives in the menu bar. Clipboard, drag monitoring, and media features may ask for local-only macOS permissions here.
         """
     }
 

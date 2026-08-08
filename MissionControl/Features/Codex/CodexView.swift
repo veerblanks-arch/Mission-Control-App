@@ -221,6 +221,10 @@ private struct CodexThreadRow: View {
                         Text("•")
                     }
                     Text(thread.status.title)
+                    if let role {
+                        Text("•")
+                        Text(role.title)
+                    }
                     if let model = thread.model {
                         Text("•")
                         Text(model)
@@ -306,6 +310,11 @@ private struct CodexChatView: View {
                 .buttonStyle(.plain)
                 .help("Back to Codex tasks")
 
+                if let role = feature.role(for: thread.id) {
+                    CodexPetIcon(role: role, size: 24)
+                        .help(role.title)
+                }
+
                 VStack(alignment: .leading, spacing: 2) {
                     Text(thread.title)
                         .font(.system(size: 13, weight: .semibold))
@@ -338,6 +347,7 @@ private struct CodexChatView: View {
                 }
                 .buttonStyle(.bordered)
                 .controlSize(.small)
+                .disabled(thread.status.isActive || feature.isSending)
                 .help("Refresh saved history")
 
                 Button {
@@ -380,11 +390,11 @@ private struct CodexChatView: View {
                     isDroppyManaged
                         ? thread.status.isRunning
                             ? "Wait for the current response before handing this task to Codex"
-                            : "Release Droppy's live session and continue this task in Codex"
+                            : "Release Mission Control's live session and continue this task in Codex"
                         : wasHandedOff
                         ? thread.status.isActive
                             ? "Wait for the current Codex response before bringing this task back"
-                            : "Resume this same task as a live Droppy chat"
+                            : "Resume this same task as a live Mission Control chat"
                         : "Open this saved task in Codex"
                 )
             }
@@ -397,14 +407,18 @@ private struct CodexChatView: View {
                 Text(
                     isRecentlyCompleted
                         ? "This chat just finished. You can reply below or hand it off to Codex."
+                        : isDroppyManaged && thread.status == .waiting
+                        ? "Mission Control cancelled a protected request. Hand off to Codex to review and continue."
+                        : wasHandedOff && thread.status == .waiting
+                        ? "This task still needs attention in Codex. Bring it back after that request is resolved."
                         : thread.status == .waiting
-                        ? "This task needs attention. Hand it off to Codex to review the request."
+                        ? "This saved task needs attention in Codex. Open it there to continue."
                         : isDroppyActive
-                        ? "Live in Droppy. The current response is streaming into this chat."
+                        ? "Live in Mission Control. The current response is streaming into this chat."
                         : isDroppyManaged
-                        ? "Live Droppy chat. Reply below, or hand it off to continue in Codex."
+                        ? "Live Mission Control chat. Reply below, or hand it off to continue in Codex."
                         : wasHandedOff
-                        ? "Handed off to Codex. Bring it back to continue this same task in Droppy."
+                        ? "Handed off to Codex. Bring it back to continue this same task in Mission Control."
                         : "Saved history only. Open in Codex to continue this task."
                 )
                 Spacer()
@@ -647,17 +661,28 @@ private struct CodexNewTaskView: View {
             }
 
             VStack(alignment: .leading, spacing: 6) {
-                Text("Agent role").font(.system(size: 11, weight: .semibold))
-                Picker("Agent role", selection: $role) {
+                Text("Task label").font(.system(size: 11, weight: .semibold))
+                Picker("Task label", selection: $role) {
                     ForEach(CodexAgentRole.allCases) { role in
                         Label(role.title, systemImage: role.symbolName).tag(role)
                     }
                 }
                 .pickerStyle(.segmented)
                 .labelsHidden()
+
+                HStack(spacing: 8) {
+                    CodexPetIcon(role: role, size: 24)
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text(role.title)
+                            .font(.system(size: 10, weight: .semibold))
+                        Text("Visual label for organizing this task")
+                            .font(.system(size: 9))
+                            .foregroundStyle(.secondary)
+                    }
+                }
             }
 
-            Text("Droppy runs the initial task. Continue the conversation in Codex after it finishes.")
+            Text("Mission Control keeps this chat live. Hand it off to Codex whenever you want.")
                 .font(.system(size: 10))
                 .foregroundStyle(.secondary)
 

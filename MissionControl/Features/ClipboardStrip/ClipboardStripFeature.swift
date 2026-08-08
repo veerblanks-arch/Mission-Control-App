@@ -483,7 +483,7 @@ final class ClipboardManagerFeature: ObservableObject {
         guard
             let capture = ClipboardCaptureReader.screenshot(
                 url: url,
-                sourceAppName: "Droppy Snippet",
+                sourceAppName: "Mission Control Snippet",
                 sourceBundleIdentifier: Bundle.main.bundleIdentifier
             ),
             let image = NSImage(contentsOf: url),
@@ -875,7 +875,7 @@ final class ClipboardManagerFeature: ObservableObject {
     private static func imageFileName(for item: ClipboardItem) -> String {
         let baseName = (item.title as NSString).deletingPathExtension
             .trimmingCharacters(in: .whitespacesAndNewlines)
-        let safeBaseName = (baseName.isEmpty ? "Droppy Image" : baseName)
+        let safeBaseName = (baseName.isEmpty ? "Mission Control Image" : baseName)
             .replacingOccurrences(of: "/", with: "-")
             .replacingOccurrences(of: ":", with: "-")
         return "\(safeBaseName).png"

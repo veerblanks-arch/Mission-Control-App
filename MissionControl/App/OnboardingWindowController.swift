@@ -10,7 +10,7 @@ final class SettingsWindowController: NSWindowController {
             permissionsManager: permissionsManager
         )
         let window = NSWindow(contentViewController: viewController)
-        window.title = "Droppy Settings"
+        window.title = "Mission Control Settings"
         window.styleMask = [.titled, .closable, .miniaturizable]
         window.setContentSize(NSSize(width: 520, height: 300))
         window.isReleasedWhenClosed = false
@@ -41,7 +41,7 @@ private final class OnboardingViewController: NSViewController {
     override func loadView() {
         view = NSView(frame: NSRect(x: 0, y: 0, width: 520, height: 300))
 
-        let title = NSTextField(labelWithString: "Droppy Overlay")
+        let title = NSTextField(labelWithString: "Mission Control")
         title.font = .systemFont(ofSize: 22, weight: .semibold)
 
         let body = NSTextField(wrappingLabelWithString: permissionsManager.onboardingMessage)

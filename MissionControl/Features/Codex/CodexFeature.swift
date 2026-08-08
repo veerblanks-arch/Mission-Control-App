@@ -3,6 +3,16 @@ import Foundation
 
 @MainActor
 final class CodexFeature: ObservableObject {
+    private enum OwnershipState: String, Codable {
+        case managed
+        case handedOff
+    }
+
+    private struct OwnershipRecord: Codable {
+        let state: OwnershipState
+        let role: CodexAgentRole
+    }
+
     static let shared = CodexFeature()
 
     @Published private(set) var connectionState: CodexConnectionState = .stopped
@@ -21,8 +31,10 @@ final class CodexFeature: ObservableObject {
 
     private let client: CodexAppServerClient
     private let defaults: UserDefaults
+    private let ownershipRecordsKey = "codexThreadOwnershipRecords"
     private let roleAssignmentsKey = "codexThreadRoleAssignments"
     private let handedOffRoleAssignmentsKey = "codexHandedOffRoleAssignments"
+    private var ownershipRecords: [String: OwnershipRecord]
     private var roleAssignments: [String: CodexAgentRole]
     private var handedOffRoleAssignments: [String: CodexAgentRole]
     private var refreshTimer: Timer?
@@ -43,24 +55,51 @@ final class CodexFeature: ObservableObject {
     ) {
         self.client = client
         self.defaults = defaults
+        let legacyManaged: [String: CodexAgentRole]
         if
             let data = defaults.data(forKey: roleAssignmentsKey),
             let stored = try? JSONDecoder().decode([String: CodexAgentRole].self, from: data)
         {
-            roleAssignments = stored
-            managedThreadIDs = Set(stored.keys)
+            legacyManaged = stored
         } else {
-            roleAssignments = [:]
-            managedThreadIDs = []
+            legacyManaged = [:]
         }
+        let legacyHandedOff: [String: CodexAgentRole]
         if
             let data = defaults.data(forKey: handedOffRoleAssignmentsKey),
             let stored = try? JSONDecoder().decode([String: CodexAgentRole].self, from: data)
         {
-            handedOffRoleAssignments = stored
+            legacyHandedOff = stored
         } else {
-            handedOffRoleAssignments = [:]
+            legacyHandedOff = [:]
         }
+
+        if
+            let data = defaults.data(forKey: ownershipRecordsKey),
+            let stored = try? JSONDecoder().decode([String: OwnershipRecord].self, from: data)
+        {
+            ownershipRecords = stored
+        } else {
+            var migrated = legacyManaged.mapValues {
+                OwnershipRecord(state: .managed, role: $0)
+            }
+            for (threadID, role) in legacyHandedOff {
+                // A legacy conflict means unsubscribe had already succeeded before
+                // the old two-write handoff sequence was interrupted.
+                migrated[threadID] = OwnershipRecord(state: .handedOff, role: role)
+            }
+            ownershipRecords = migrated
+            if let data = try? JSONEncoder().encode(migrated) {
+                defaults.set(data, forKey: ownershipRecordsKey)
+            }
+        }
+        roleAssignments = ownershipRecords.compactMapValues {
+            $0.state == .managed ? $0.role : nil
+        }
+        handedOffRoleAssignments = ownershipRecords.compactMapValues {
+            $0.state == .handedOff ? $0.role : nil
+        }
+        managedThreadIDs = Set(roleAssignments.keys)
 
         client.onNotification = { [weak self] method, params in
             self?.handleNotification(method: method, params: params)
@@ -72,6 +111,13 @@ final class CodexFeature: ObservableObject {
             guard let self else { return }
             self.hasStarted = false
             self.connectionState = .failed(message)
+            self.threadRefreshToken = nil
+            self.historyLoadToken = nil
+            self.isLoadingThread = false
+            self.threads = self.threads.map { $0.replacing(status: .unavailable) }
+            if let selectedThread = self.selectedThread {
+                self.selectedThread = selectedThread.replacing(status: .unavailable)
+            }
             self.refreshTimer?.invalidate()
             self.refreshTimer = nil
             self.scheduleReconnect()
@@ -301,16 +347,8 @@ final class CodexFeature: ObservableObject {
         }
     }
 
-    func runningThreads(for role: CodexAgentRole) -> [CodexThreadSummary] {
-        threads.filter {
-            managedThreadIDs.contains($0.id)
-                && roleAssignments[$0.id] == role
-                && $0.status.isRunning
-        }
-    }
-
     func role(for threadID: String) -> CodexAgentRole? {
-        roleAssignments[threadID]
+        roleAssignments[threadID] ?? handedOffRoleAssignments[threadID]
     }
 
     func isDroppyManaged(_ threadID: String) -> Bool {
@@ -351,7 +389,11 @@ final class CodexFeature: ObservableObject {
     }
 
     func refreshSelectedThreadHistory() {
-        guard let selectedThread else { return }
+        guard
+            let selectedThread,
+            !selectedThread.status.isActive,
+            !isSending
+        else { return }
         loadThreadHistory(selectedThread, clearExisting: false)
     }
 
@@ -379,14 +421,45 @@ final class CodexFeature: ObservableObject {
                     self.lastIssue = CodexFeatureError.malformedResponse.localizedDescription
                     return
                 }
-                let refreshedThread = Self.parseThread(value, model: thread.model) ?? thread
-                self.loadedHistoryDates[thread.id] = refreshedThread.updatedAt
+                guard
+                    let refreshedThread = Self.parseThread(value, model: thread.model),
+                    refreshedThread.id == thread.id
+                else {
+                    self.lastIssue = CodexFeatureError.malformedResponse.localizedDescription
+                    return
+                }
+                let currentStatus = self.threads.first(where: { $0.id == thread.id })?.status
+                    ?? (self.selectedThread?.id == thread.id ? self.selectedThread?.status : nil)
+                let displayedThread: CodexThreadSummary
+                if
+                    let currentStatus,
+                    currentStatus.isActive,
+                    !refreshedThread.status.isActive
+                {
+                    displayedThread = refreshedThread.replacing(status: currentStatus)
+                } else {
+                    displayedThread = refreshedThread
+                }
+                self.loadedHistoryDates[thread.id] = displayedThread.updatedAt
                 if let index = self.threads.firstIndex(where: { $0.id == thread.id }) {
-                    self.threads[index] = refreshedThread
+                    self.threads[index] = displayedThread
                 }
                 if self.selectedThread?.id == thread.id {
-                    self.selectedThread = refreshedThread
-                    self.messages = Self.parseMessages(from: value)
+                    self.selectedThread = displayedThread
+                    let parsedMessages = Self.parseMessages(from: value)
+                    if
+                        thread.status.isActive
+                            || refreshedThread.status.isActive
+                            || currentStatus?.isActive == true
+                            || self.isSending
+                    {
+                        self.messages = Self.mergeHistoryMessages(
+                            parsedMessages,
+                            preservingLiveMessages: self.messages
+                        )
+                    } else {
+                        self.messages = parsedMessages
+                    }
                 }
             case let .failure(error):
                 if
@@ -426,6 +499,10 @@ final class CodexFeature: ObservableObject {
         completion: @escaping (Bool) -> Void
     ) {
         let trimmedPrompt = prompt.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !isSending, !isHandingOff, !isTakingBack else {
+            completion(false)
+            return
+        }
         guard !trimmedPrompt.isEmpty, projectPath.hasPrefix("/") else {
             lastIssue = "Choose a project folder and enter a task."
             completion(false)
@@ -435,7 +512,7 @@ final class CodexFeature: ObservableObject {
         lastIssue = nil
         client.request(
             method: "thread/start",
-            params: ["cwd": projectPath]
+            params: Self.safeThreadStartParams(cwd: projectPath)
         ) { [weak self] result in
             guard let self else { return }
             switch result {
@@ -473,6 +550,7 @@ final class CodexFeature: ObservableObject {
                 ]
                 self.startTurn(
                     threadID: summary.id,
+                    cwd: summary.cwd,
                     prompt: trimmedPrompt,
                     attachments: attachments,
                     threadToOpen: nil,
@@ -496,12 +574,23 @@ final class CodexFeature: ObservableObject {
         completion: ((Bool) -> Void)? = nil
     ) {
         let trimmedPrompt = prompt.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard managedThreadIDs.contains(thread.id) else {
-            lastIssue = "This task is read-only in Droppy. Continue it in Codex."
+        guard !isSending, !isHandingOff, !isTakingBack else {
             completion?(false)
             return
         }
-        guard !thread.status.isActive else {
+        guard managedThreadIDs.contains(thread.id) else {
+            lastIssue = "This task is read-only in Mission Control. Continue it in Codex."
+            completion?(false)
+            return
+        }
+        guard let currentThread = threads.first(where: { $0.id == thread.id })
+            ?? (selectedThread?.id == thread.id ? selectedThread : nil)
+        else {
+            lastIssue = "Mission Control could not find that task."
+            completion?(false)
+            return
+        }
+        guard !currentThread.status.isActive else {
             lastIssue = "Wait for the current response before sending another message."
             completion?(false)
             return
@@ -515,6 +604,12 @@ final class CodexFeature: ObservableObject {
         lastIssue = nil
         let sendTurn = { [weak self] (resumedThread: CodexThreadSummary) in
             guard let self else { return }
+            guard !resumedThread.status.isActive else {
+                self.isSending = false
+                self.lastIssue = "This task is active in Codex. Wait for it to finish, then try again."
+                completion?(false)
+                return
+            }
             let localMessageID = "droppy-local-\(UUID().uuidString)"
             self.messages.append(
                 CodexChatMessage(id: localMessageID, sender: .user, text: trimmedPrompt)
@@ -528,6 +623,7 @@ final class CodexFeature: ObservableObject {
             }
             self.startTurn(
                 threadID: resumedThread.id,
+                cwd: resumedThread.cwd,
                 prompt: trimmedPrompt,
                 attachments: attachments,
                 threadToOpen: nil,
@@ -537,10 +633,10 @@ final class CodexFeature: ObservableObject {
             )
         }
 
-        if thread.status == .unavailable {
-            resume(thread: thread, completion: sendTurn, failure: completion)
+        if currentThread.status == .unavailable {
+            resume(thread: currentThread, completion: sendTurn, failure: completion)
         } else {
-            sendTurn(thread)
+            sendTurn(currentThread)
         }
     }
 
@@ -553,7 +649,7 @@ final class CodexFeature: ObservableObject {
         guard let thread = threads.first(where: { $0.id == threadID })
             ?? (selectedThread?.id == threadID ? selectedThread : nil)
         else {
-            lastIssue = "Droppy could not find that task."
+            lastIssue = "Mission Control could not find that task."
             return
         }
         guard !thread.status.isRunning else {
@@ -563,18 +659,14 @@ final class CodexFeature: ObservableObject {
 
         isHandingOff = true
         lastIssue = nil
-        client.request(
-            method: "thread/unsubscribe",
-            params: ["threadId": threadID]
-        ) { [weak self] result in
+        releaseSubscription(threadID: threadID) { [weak self] result in
             guard let self else { return }
             self.isHandingOff = false
             switch result {
             case .success:
                 if let role = self.roleAssignments[threadID] {
-                    self.rememberHandedOff(role: role, threadID: threadID)
+                    self.setOwnership(.handedOff, role: role, threadID: threadID)
                 }
-                self.removeManagement(for: threadID)
                 self.openInCodex(threadID)
                 self.refresh()
             case let .failure(error):
@@ -588,14 +680,14 @@ final class CodexFeature: ObservableObject {
             !managedThreadIDs.contains(threadID),
             let role = handedOffRoleAssignments[threadID]
         else {
-            lastIssue = "Only tasks previously handed off by Droppy can be brought back."
+            lastIssue = "Only tasks previously handed off by Mission Control can be brought back."
             return
         }
         guard !isTakingBack, !isHandingOff, !isSending else { return }
         guard let thread = threads.first(where: { $0.id == threadID })
             ?? (selectedThread?.id == threadID ? selectedThread : nil)
         else {
-            lastIssue = "Droppy could not find that task."
+            lastIssue = "Mission Control could not find that task."
             return
         }
         guard !thread.status.isActive else {
@@ -607,14 +699,15 @@ final class CodexFeature: ObservableObject {
         lastIssue = nil
         client.request(
             method: "thread/resume",
-            params: ["threadId": threadID]
+            params: Self.safeThreadResumeParams(threadID: threadID, cwd: thread.cwd)
         ) { [weak self] result in
             guard let self else { return }
             switch result {
             case let .success(payload):
                 guard
                     let value = payload["thread"] as? [String: Any],
-                    let resumed = Self.parseThread(value, model: payload["model"] as? String)
+                    let resumed = Self.parseThread(value, model: payload["model"] as? String),
+                    resumed.id == threadID
                 else {
                     self.cancelTakeBackSubscription(
                         threadID: threadID,
@@ -636,8 +729,7 @@ final class CodexFeature: ObservableObject {
                 if let model = resumed.model {
                     self.modelsByThreadID[resumed.id] = model
                 }
-                self.removeHandedOff(threadID: threadID)
-                self.assign(role: role, to: threadID)
+                self.setOwnership(.managed, role: role, threadID: threadID)
                 self.isTakingBack = false
                 if let index = self.threads.firstIndex(where: { $0.id == threadID }) {
                     self.threads[index] = resumed
@@ -646,7 +738,7 @@ final class CodexFeature: ObservableObject {
                 self.refresh()
             case let .failure(error):
                 self.isTakingBack = false
-                self.lastIssue = "Could not bring this task back to Droppy: \(error.localizedDescription)"
+                self.lastIssue = "Could not bring this task back to Mission Control: \(error.localizedDescription)"
             }
         }
     }
@@ -657,27 +749,48 @@ final class CodexFeature: ObservableObject {
         role: CodexAgentRole,
         fallbackThread: CodexThreadSummary
     ) {
-        client.request(
-            method: "thread/unsubscribe",
-            params: ["threadId": threadID]
-        ) { [weak self] result in
+        releaseSubscription(threadID: threadID) { [weak self] result in
             guard let self else { return }
             self.isTakingBack = false
             switch result {
             case .success:
                 self.lastIssue = message
             case let .failure(error):
-                self.removeHandedOff(threadID: threadID)
-                self.assign(role: role, to: threadID)
+                self.setOwnership(.managed, role: role, threadID: threadID)
                 if let index = self.threads.firstIndex(where: { $0.id == threadID }) {
                     self.threads[index] = fallbackThread
                 }
                 if self.selectedThread?.id == threadID {
                     self.selectedThread = fallbackThread
                 }
-                self.lastIssue = "\(message) Droppy could not release its temporary subscription, so it kept the task here safely: \(error.localizedDescription)"
+                self.lastIssue = "\(message) Mission Control could not release its temporary subscription, so it kept the task here safely: \(error.localizedDescription)"
             }
             self.refresh()
+        }
+    }
+
+    private func releaseSubscription(
+        threadID: String,
+        completion: @escaping (Result<Void, Error>) -> Void
+    ) {
+        client.request(
+            method: "thread/unsubscribe",
+            params: ["threadId": threadID]
+        ) { result in
+            switch result {
+            case let .success(payload):
+                let safeStatuses = Set(["notLoaded", "notSubscribed", "unsubscribed"])
+                guard
+                    let status = payload["status"] as? String,
+                    safeStatuses.contains(status)
+                else {
+                    completion(.failure(CodexFeatureError.malformedResponse))
+                    return
+                }
+                completion(.success(()))
+            case let .failure(error):
+                completion(.failure(error))
+            }
         }
     }
 
@@ -688,6 +801,7 @@ final class CodexFeature: ObservableObject {
 
     private func startTurn(
         threadID: String,
+        cwd: String,
         prompt: String,
         attachments: [CodexDraftAttachment],
         threadToOpen: CodexThreadSummary?,
@@ -696,34 +810,43 @@ final class CodexFeature: ObservableObject {
         discardManagedThreadOnFailure: Bool = false,
         completion: ((Bool) -> Void)? = nil
     ) {
+        historyLoadToken = nil
+        isLoadingThread = false
         client.request(
             method: "turn/start",
-            params: [
-                "threadId": threadID,
-                "input": Self.userInputs(prompt: prompt, attachments: attachments),
-            ]
+            params: Self.safeTurnStartParams(
+                threadID: threadID,
+                cwd: cwd,
+                input: Self.userInputs(prompt: prompt, attachments: attachments)
+            )
         ) { [weak self] result in
             guard let self else { return }
             self.isSending = false
             switch result {
-            case .success:
+            case let .success(payload):
+                guard Self.turnID(fromStartPayload: payload) != nil else {
+                    self.rollbackOptimisticTurn(
+                        threadID: threadID,
+                        optimisticMessageID: optimisticMessageID,
+                        threadBeforeOptimisticStart: threadBeforeOptimisticStart,
+                        discardManagedThreadOnFailure: discardManagedThreadOnFailure,
+                        error: CodexFeatureError.malformedResponse,
+                        completion: completion
+                    )
+                    return
+                }
                 let baseThread = threadToOpen
                     ?? self.threads.first(where: { $0.id == threadID })
                     ?? (self.selectedThread?.id == threadID ? self.selectedThread : nil)
                 guard let baseThread else {
-                    self.lastIssue = CodexFeatureError.malformedResponse.localizedDescription
-                    if let optimisticMessageID {
-                        self.messages.removeAll { $0.id == optimisticMessageID }
-                    }
-                    if discardManagedThreadOnFailure {
-                        self.removeManagement(for: threadID)
-                        self.threads.removeAll { $0.id == threadID }
-                        if self.selectedThread?.id == threadID {
-                            self.selectedThread = nil
-                            self.messages = []
-                        }
-                    }
-                    completion?(false)
+                    self.rollbackOptimisticTurn(
+                        threadID: threadID,
+                        optimisticMessageID: optimisticMessageID,
+                        threadBeforeOptimisticStart: threadBeforeOptimisticStart,
+                        discardManagedThreadOnFailure: discardManagedThreadOnFailure,
+                        error: CodexFeatureError.malformedResponse,
+                        completion: completion
+                    )
                     return
                 }
                 let runningThread = baseThread.replacing(status: .running)
@@ -737,29 +860,88 @@ final class CodexFeature: ObservableObject {
                 if threadToOpen != nil { self.openThread(runningThread) }
                 completion?(true)
             case let .failure(error):
-                if let optimisticMessageID {
-                    self.messages.removeAll { $0.id == optimisticMessageID }
-                }
-                if let threadBeforeOptimisticStart {
-                    if let index = self.threads.firstIndex(where: { $0.id == threadID }) {
-                        self.threads[index] = threadBeforeOptimisticStart
-                    }
-                    if self.selectedThread?.id == threadID {
-                        self.selectedThread = threadBeforeOptimisticStart
-                    }
-                }
-                if discardManagedThreadOnFailure {
-                    self.removeManagement(for: threadID)
-                    self.threads.removeAll { $0.id == threadID }
-                    if self.selectedThread?.id == threadID {
-                        self.selectedThread = nil
-                        self.messages = []
-                    }
+                self.rollbackOptimisticTurn(
+                    threadID: threadID,
+                    optimisticMessageID: optimisticMessageID,
+                    threadBeforeOptimisticStart: threadBeforeOptimisticStart,
+                    discardManagedThreadOnFailure: discardManagedThreadOnFailure,
+                    error: error,
+                    completion: completion
+                )
+            }
+        }
+    }
+
+    private func rollbackOptimisticTurn(
+        threadID: String,
+        optimisticMessageID: String?,
+        threadBeforeOptimisticStart: CodexThreadSummary?,
+        discardManagedThreadOnFailure: Bool,
+        error: Error,
+        completion: ((Bool) -> Void)?
+    ) {
+        isSending = false
+        if let optimisticMessageID {
+            messages.removeAll { $0.id == optimisticMessageID }
+        }
+        if let threadBeforeOptimisticStart {
+            if let index = threads.firstIndex(where: { $0.id == threadID }) {
+                threads[index] = threadBeforeOptimisticStart
+            }
+            if selectedThread?.id == threadID {
+                selectedThread = threadBeforeOptimisticStart
+            }
+        }
+        if discardManagedThreadOnFailure {
+            releaseFailedCreatedTask(
+                threadID: threadID,
+                error: error,
+                fallbackThread: threadBeforeOptimisticStart,
+                completion: completion
+            )
+            return
+        }
+        lastIssue = error.localizedDescription
+        refresh()
+        completion?(false)
+    }
+
+    private func releaseFailedCreatedTask(
+        threadID: String,
+        error: Error,
+        fallbackThread: CodexThreadSummary?,
+        completion: ((Bool) -> Void)?
+    ) {
+        isHandingOff = true
+        releaseSubscription(threadID: threadID) { [weak self] result in
+            guard let self else { return }
+            self.isHandingOff = false
+            switch result {
+            case .success:
+                self.clearOwnership(for: threadID)
+                self.threads.removeAll { $0.id == threadID }
+                if self.selectedThread?.id == threadID {
+                    self.selectedThread = nil
+                    self.messages = []
                 }
                 self.lastIssue = error.localizedDescription
-                self.refresh()
-                completion?(false)
+            case let .failure(releaseError):
+                if let role = self.roleAssignments[threadID] {
+                    self.setOwnership(.managed, role: role, threadID: threadID)
+                }
+                if let fallbackThread {
+                    let guardedThread = fallbackThread.replacing(status: .waiting)
+                    if let index = self.threads.firstIndex(where: { $0.id == threadID }) {
+                        self.threads[index] = guardedThread
+                    }
+                    if self.selectedThread?.id == threadID {
+                        self.selectedThread = guardedThread
+                    }
+                }
+                self.lastIssue = "\(error.localizedDescription) Mission Control could not release the new task subscription, so it kept the task here safely: \(releaseError.localizedDescription)"
             }
+            self.refresh()
+            completion?(false)
         }
     }
 
@@ -768,29 +950,79 @@ final class CodexFeature: ObservableObject {
         completion: @escaping (CodexThreadSummary) -> Void,
         failure: ((Bool) -> Void)?
     ) {
+        guard let role = roleAssignments[thread.id] else {
+            isSending = false
+            lastIssue = "Mission Control no longer owns this task. Open it in Codex to continue."
+            failure?(false)
+            return
+        }
         client.request(
             method: "thread/resume",
-            params: ["threadId": thread.id]
+            params: Self.safeThreadResumeParams(threadID: thread.id, cwd: thread.cwd)
         ) { [weak self] result in
             guard let self else { return }
             switch result {
             case let .success(payload):
                 guard
                     let value = payload["thread"] as? [String: Any],
-                    let resumed = Self.parseThread(value, model: payload["model"] as? String)
+                    let resumed = Self.parseThread(value, model: payload["model"] as? String),
+                    resumed.id == thread.id
                 else {
-                    self.isSending = false
-                    self.lastIssue = CodexFeatureError.malformedResponse.localizedDescription
-                    failure?(false)
+                    self.cancelManagedResumeSubscription(
+                        threadID: thread.id,
+                        message: CodexFeatureError.malformedResponse.localizedDescription,
+                        role: role,
+                        fallbackThread: thread,
+                        failure: failure
+                    )
+                    return
+                }
+                guard !resumed.status.isActive else {
+                    self.cancelManagedResumeSubscription(
+                        threadID: thread.id,
+                        message: "This task is active in Codex. Wait for it to finish, then bring it back.",
+                        role: role,
+                        fallbackThread: resumed,
+                        failure: failure
+                    )
                     return
                 }
                 if let model = resumed.model { self.modelsByThreadID[resumed.id] = model }
                 completion(resumed)
             case let .failure(error):
                 self.isSending = false
-                self.lastIssue = "Could not resume this task in Droppy: \(error.localizedDescription)"
+                self.lastIssue = "Could not resume this task in Mission Control: \(error.localizedDescription)"
                 failure?(false)
             }
+        }
+    }
+
+    private func cancelManagedResumeSubscription(
+        threadID: String,
+        message: String,
+        role: CodexAgentRole,
+        fallbackThread: CodexThreadSummary,
+        failure: ((Bool) -> Void)?
+    ) {
+        releaseSubscription(threadID: threadID) { [weak self] result in
+            guard let self else { return }
+            self.isSending = false
+            if let index = self.threads.firstIndex(where: { $0.id == threadID }) {
+                self.threads[index] = fallbackThread
+            }
+            if self.selectedThread?.id == threadID {
+                self.selectedThread = fallbackThread
+            }
+            switch result {
+            case .success:
+                self.setOwnership(.handedOff, role: role, threadID: threadID)
+                self.lastIssue = message
+            case let .failure(error):
+                self.setOwnership(.managed, role: role, threadID: threadID)
+                self.lastIssue = "\(message) Mission Control could not release its temporary subscription, so it kept the task here safely: \(error.localizedDescription)"
+            }
+            self.refresh()
+            failure?(false)
         }
     }
 
@@ -838,7 +1070,13 @@ final class CodexFeature: ObservableObject {
             let refreshed = threads.first(where: { $0.id == selectedID }) ?? current
             selectedThread = refreshed
             let lastLoaded = loadedHistoryDates[selectedID] ?? .distantPast
-            if refreshed.updatedAt > lastLoaded, !isLoadingThread {
+            if
+                refreshed.updatedAt > lastLoaded,
+                !isLoadingThread,
+                !current.status.isActive,
+                !refreshed.status.isActive,
+                !isSending
+            {
                 loadThreadHistory(refreshed, clearExisting: false)
             }
         }
@@ -870,34 +1108,36 @@ final class CodexFeature: ObservableObject {
     }
 
     private func assign(role: CodexAgentRole, to threadID: String) {
-        roleAssignments[threadID] = role
-        managedThreadIDs.insert(threadID)
-        if let data = try? JSONEncoder().encode(roleAssignments) {
-            defaults.set(data, forKey: roleAssignmentsKey)
-        }
+        setOwnership(.managed, role: role, threadID: threadID)
     }
 
-    private func removeManagement(for threadID: String) {
+    private func setOwnership(
+        _ state: OwnershipState,
+        role: CodexAgentRole,
+        threadID: String
+    ) {
+        ownershipRecords[threadID] = OwnershipRecord(state: state, role: role)
+        roleAssignments[threadID] = state == .managed ? role : nil
+        handedOffRoleAssignments[threadID] = state == .handedOff ? role : nil
+        if state == .managed {
+            managedThreadIDs.insert(threadID)
+        } else {
+            managedThreadIDs.remove(threadID)
+        }
+        persistOwnershipRecords()
+    }
+
+    private func clearOwnership(for threadID: String) {
+        ownershipRecords[threadID] = nil
         roleAssignments[threadID] = nil
-        managedThreadIDs.remove(threadID)
-        if let data = try? JSONEncoder().encode(roleAssignments) {
-            defaults.set(data, forKey: roleAssignmentsKey)
-        }
-    }
-
-    private func rememberHandedOff(role: CodexAgentRole, threadID: String) {
-        handedOffRoleAssignments[threadID] = role
-        persistHandedOffRoles()
-    }
-
-    private func removeHandedOff(threadID: String) {
         handedOffRoleAssignments[threadID] = nil
-        persistHandedOffRoles()
+        managedThreadIDs.remove(threadID)
+        persistOwnershipRecords()
     }
 
-    private func persistHandedOffRoles() {
-        if let data = try? JSONEncoder().encode(handedOffRoleAssignments) {
-            defaults.set(data, forKey: handedOffRoleAssignmentsKey)
+    private func persistOwnershipRecords() {
+        if let data = try? JSONEncoder().encode(ownershipRecords) {
+            defaults.set(data, forKey: ownershipRecordsKey)
         }
     }
 
@@ -907,11 +1147,22 @@ final class CodexFeature: ObservableObject {
             refresh()
         case "turn/completed":
             guard let threadID = params["threadId"] as? String else { return }
+            let turn = params["turn"] as? [String: Any]
+            let status = turn?["status"] as? String
+            if
+                selectedThread?.id == threadID,
+                status == "failed" || status == "interrupted"
+            {
+                let fallback = status == "interrupted"
+                    ? "The Codex turn was interrupted."
+                    : "The Codex turn failed."
+                lastIssue = Self.turnErrorMessage(from: turn) ?? fallback
+            }
             if
                 managedThreadIDs.contains(threadID),
-                let turn = params["turn"] as? [String: Any],
+                let turn,
                 let turnID = turn["id"] as? String,
-                turn["status"] as? String == "completed",
+                status == "completed",
                 let thread = threads.first(where: { $0.id == threadID })
                     ?? (selectedThread?.id == threadID ? selectedThread : nil)
             {
@@ -919,6 +1170,16 @@ final class CodexFeature: ObservableObject {
             }
             refresh()
             if selectedThread?.id == threadID { refreshSelectedThreadHistory() }
+        case "error":
+            let threadID = params["threadId"] as? String
+            let willRetry = params["willRetry"] as? Bool ?? false
+            if
+                !willRetry,
+                threadID == nil || selectedThread?.id == threadID,
+                let message = Self.turnErrorMessage(from: params)
+            {
+                lastIssue = message
+            }
         case "item/agentMessage/delta":
             guard
                 let threadID = params["threadId"] as? String,
@@ -938,13 +1199,94 @@ final class CodexFeature: ObservableObject {
         }
     }
 
+    static func mergeHistoryMessages(
+        _ history: [CodexChatMessage],
+        preservingLiveMessages live: [CodexChatMessage]
+    ) -> [CodexChatMessage] {
+        let liveByID = Dictionary(uniqueKeysWithValues: live.map { ($0.id, $0) })
+        var merged = history.map { message -> CodexChatMessage in
+            guard
+                let liveMessage = liveByID[message.id],
+                liveMessage.sender == message.sender,
+                liveMessage.text.count >= message.text.count,
+                liveMessage.text.hasPrefix(message.text)
+            else { return message }
+            return liveMessage
+        }
+        let historyIDs = Set(history.map(\.id))
+        merged.append(contentsOf: live.filter { !historyIDs.contains($0.id) })
+        return merged
+    }
+
+    static func turnErrorMessage(from value: [String: Any]?) -> String? {
+        guard let value else { return nil }
+        if let error = value["error"] as? [String: Any],
+           let message = error["message"] as? String,
+           !message.isEmpty
+        {
+            return message
+        }
+        if let message = value["message"] as? String, !message.isEmpty {
+            return message
+        }
+        return nil
+    }
+
+    static func turnID(fromStartPayload payload: [String: Any]) -> String? {
+        guard
+            let turn = payload["turn"] as? [String: Any],
+            let turnID = turn["id"] as? String,
+            !turnID.isEmpty
+        else { return nil }
+        return turnID
+    }
+
     private func handleProtectedRequest(method: String, params: [String: Any]) {
-        let threadID = params["threadId"] as? String
-        lastIssue = "Codex requested an approval or additional input. Droppy cancelled it safely; open the chat in Codex to review and continue."
-        if let threadID, selectedThread?.id == threadID, let selectedThread {
+        guard
+            let threadID = params["threadId"] as? String,
+            managedThreadIDs.contains(threadID)
+        else { return }
+        lastIssue = "Codex requested an approval or additional input. Mission Control cancelled it safely; hand off the chat to Codex to review and continue."
+        if selectedThread?.id == threadID, let selectedThread {
             self.selectedThread = selectedThread.replacing(status: .waiting)
         }
         _ = method
+    }
+
+    static func safeThreadStartParams(cwd: String) -> [String: Any] {
+        [
+            "cwd": cwd,
+            "approvalPolicy": "onRequest",
+            "sandbox": "workspaceWrite",
+            "serviceName": "mission_control",
+        ]
+    }
+
+    static func safeThreadResumeParams(threadID: String, cwd: String) -> [String: Any] {
+        [
+            "threadId": threadID,
+            "cwd": cwd,
+            "approvalPolicy": "onRequest",
+            "sandbox": "workspaceWrite",
+        ]
+    }
+
+    static func safeTurnStartParams(
+        threadID: String,
+        cwd: String,
+        input: [[String: Any]]
+    ) -> [String: Any] {
+        [
+            "threadId": threadID,
+            "cwd": cwd,
+            "input": input,
+            "approvalPolicy": "onRequest",
+            "sandboxPolicy": [
+                "type": "workspaceWrite",
+                "writableRoots": [cwd],
+                "networkAccess": false,
+            ],
+        ]
     }
 
     static func parseThread(

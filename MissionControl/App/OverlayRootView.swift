@@ -139,7 +139,7 @@ struct OverlayRootView: View {
                 .foregroundStyle(.tint)
 
             if model.isSearchPresented {
-                TextField("Search Droppy", text: $unifiedSearch.query)
+                TextField("Search Mission Control", text: $unifiedSearch.query)
                     .textFieldStyle(.plain)
                     .font(.system(size: 16, weight: .semibold))
                     .focused($isSearchFieldFocused)
@@ -170,7 +170,7 @@ struct OverlayRootView: View {
                     .frame(width: 30, height: 30)
             }
             .buttonStyle(.plain)
-            .help(model.isSearchPresented ? "Close search" : "Search Droppy")
+            .help(model.isSearchPresented ? "Close search" : "Search Mission Control")
 
             Button {
                 if model.isTerminalPresented {

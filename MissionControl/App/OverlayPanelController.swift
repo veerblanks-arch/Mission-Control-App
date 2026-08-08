@@ -35,7 +35,7 @@ final class OverlayPanelController: NSWindowController, NSWindowDelegate {
             backing: .buffered,
             defer: false
         )
-        panel.title = "Droppy"
+        panel.title = "Mission Control"
         panel.isFloatingPanel = true
         panel.level = .popUpMenu
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .transient]
@@ -301,7 +301,7 @@ final class OverlayPanelModel: ObservableObject {
 
     var displayedSubtitle: String {
         if isSearchPresented {
-            return "Across Droppy"
+            return "Across Mission Control"
         }
         if isTerminalPresented {
             return "Retained shell sessions"

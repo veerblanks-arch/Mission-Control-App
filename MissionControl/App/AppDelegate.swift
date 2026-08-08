@@ -16,19 +16,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private lazy var settingsWindowController = SettingsWindowController(
         permissionsManager: permissionsManager
     )
-    private lazy var codexAgentStatusItemController = CodexAgentStatusItemController(
-        feature: codex,
-        onOpenThread: { [weak self] threadID in
-            self?.statusItemController.showCodex(threadID: threadID)
-        }
-    )
     private let permissionsManager = PermissionsManager()
-    private let clipboardManager = ClipboardManagerFeature.shared
-    private let shelf = ShelfFeature.shared
-    private let terminal = TerminalFeature.shared
-    private let media = MediaFeature.shared
-    private let codex = CodexFeature.shared
-    private let notes = NotesFeature.shared
+    private lazy var clipboardManager = ClipboardManagerFeature.shared
+    private lazy var shelf = ShelfFeature.shared
+    private lazy var terminal = TerminalFeature.shared
+    private lazy var media = MediaFeature.shared
+    private lazy var codex = CodexFeature.shared
+    private lazy var notes = NotesFeature.shared
     private lazy var dropZoneCoordinator = DropZoneCoordinator(shelf: shelf)
     private lazy var snippetCaptureCoordinator = SnippetCaptureCoordinator(
         clipboardManager: clipboardManager,
@@ -44,7 +38,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         NSApp.setActivationPolicy(.accessory)
         ApplicationMenu.install(in: NSApp)
 
-        if !isRunningTests && terminateCurrentInstanceIfAnotherIsRunning() {
+        // Unit tests inject into the app host. Do not initialize Keychain,
+        // clipboard monitoring, Codex, or menu-bar services in that process.
+        if isRunningTests {
+            return
+        }
+
+        if terminateCurrentInstanceIfAnotherIsRunning() {
             return
         }
 
@@ -70,7 +70,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         clipboardManager.start()
         statusItemController.start()
         codex.start()
-        codexAgentStatusItemController.start()
         dropZoneCoordinator.start()
 
 #if DEBUG
@@ -136,7 +135,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let alert = NSAlert()
         alert.messageText = "Terminal sessions are still running"
         alert.informativeText =
-            "Quitting Droppy will stop every shell and command running inside it."
+            "Quitting Mission Control will stop every shell and command running inside it."
         alert.addButton(withTitle: "Quit and Stop Sessions")
         alert.addButton(withTitle: "Cancel")
 
@@ -148,7 +147,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 let alert = NSAlert()
                 alert.messageText = "A terminal process could not be stopped"
                 alert.informativeText =
-                    "Droppy cancelled quitting so the process is not left behind."
+                    "Mission Control cancelled quitting so the process is not left behind."
                 alert.addButton(withTitle: "OK")
                 alert.runModal()
             }
@@ -168,9 +167,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationWillTerminate(_ notification: Notification) {
+        guard hasCompletedStartup else { return }
         notes.flushPendingSave()
         media.stop()
-        codexAgentStatusItemController.stop()
         codex.stop()
         terminal.stopAll()
         dropZoneCoordinator.stop()
@@ -197,10 +196,10 @@ enum ApplicationMenu {
     static func make() -> NSMenu {
         let mainMenu = NSMenu()
 
-        let applicationItem = NSMenuItem(title: "Droppy", action: nil, keyEquivalent: "")
-        let applicationMenu = NSMenu(title: "Droppy")
+        let applicationItem = NSMenuItem(title: "Mission Control", action: nil, keyEquivalent: "")
+        let applicationMenu = NSMenu(title: "Mission Control")
         applicationMenu.addItem(
-            withTitle: "Quit Droppy",
+            withTitle: "Quit Mission Control",
             action: #selector(NSApplication.terminate(_:)),
             keyEquivalent: "q"
         )

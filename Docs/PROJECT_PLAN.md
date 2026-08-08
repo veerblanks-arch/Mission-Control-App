@@ -1,19 +1,19 @@
-# Droppy Native macOS Project Plan
+# Mission Control Native macOS Project Plan
 
 ## Product direction
 
-Droppy is a native Swift/AppKit menu-bar productivity utility. It launches
+Mission Control is a native Swift/AppKit menu-bar productivity utility. It launches
 quietly as an `LSUIElement` app with no Dock icon. Its ordinary status item can
 be hidden by Ice. Clicking the item opens a resizable panel anchored beneath
 the real menu-bar button.
 
-Droppy does not keep a permanent fake island over the menu bar. The top-center
+Mission Control does not keep a permanent fake island over the menu bar. The top-center
 surface is contextual: it appears for file drags, screenshots, and Codex task
 notifications, then dismisses according to the behavior of that feature.
 
 ## Core interaction
 
-- Main panel: anchored below the Droppy status item, resizable, closes on
+- Main panel: anchored below the Mission Control status item, resizable, closes on
   click-away or Escape, and preserves drafts.
 - Drop zone: appears at the top-center of the display under the cursor after a
   short drag hover. It accepts multiple files and folders.
@@ -49,7 +49,7 @@ notifications, then dismisses according to the behavior of that feature.
 - Files support Quick Look, open, drag-out, Reveal in Finder, and Copy Path.
 - Notes are separate, local, searchable, autosaved, and exportable. Deleted
   notes remain recoverable for 30 days.
-- Droppy includes an embedded command runner for project scripts, streaming
+- Mission Control includes an embedded command runner for project scripts, streaming
   output, and long-running jobs. Apple Terminal remains the default external
   terminal, with configurable adapters later.
 - New command sessions start in the current favorite folder or selected Codex
@@ -87,39 +87,37 @@ notifications, then dismisses according to the behavior of that feature.
 - Show Codex-created tasks as read-only saved history: task title, project,
   status, recent exchange, and model when available. Opening an external task
   never resumes it.
-- Droppy-created tasks remain live in Droppy: the active response streams into
+- Mission Control-created tasks remain live in Mission Control: the active response streams into
   the opened chat, and each idle task accepts follow-up messages and file
   attachments through the same App Server. After relaunch, a still-managed
   saved task is resumed only when the user sends a new reply.
 - `Hand Off` is available after the current response finishes. It unsubscribes
-  Droppy, removes the local role ownership, and only then opens the task in
-  Codex. Droppy persists the handed-off task's original role. When the task is
-  idle, `Bring Back` resumes that same thread through Droppy's App Server,
-  restores the role, reloads its history, and makes replies live in Droppy
-  again. Tasks that did not originate in Droppy remain read-only.
+  Mission Control, atomically records handed-off ownership, and only then opens
+  the task in Codex. Mission Control persists the handed-off task's original
+  visual label. When the task is idle, `Bring Back` resumes that same thread
+  through Mission Control's App Server, restores the label, reloads its history,
+  and makes replies live in Mission Control again. Tasks that did not originate
+  in Mission Control remain read-only.
 - Show remaining account capacity as a simple percentage (`100 - usedPercent`).
   Keep it visible in both the dashboard and opened chats.
 - File drops open a reviewable new-task composer. Images attach directly;
   other files are passed as local paths. Task creation retains project search,
   role, attachments, and usage indicators.
-- New tasks choose a project and one of four roles: Planner, Builder A,
+- New tasks choose a project and one of four visual labels: Planner, Builder A,
   Builder B, or Reviewer. The project picker is limited to APUSH, Bitwise, and
   Droppy, with `Choose Folder...` available for an intentional one-off path.
   Tasks use the current Codex default model.
-- A single compact four-pet strip sits at the top right beside the Droppy logo
-  and remains visible even when no chats are running. Planner is an owl,
-  Builder A a beaver, Builder B a fox, and Reviewer a cat. The menu-bar masks
-  render white at high contrast; opened task rows retain the full pet artwork.
-  Clicking a pet opens its running-chat dropdown; an idle role shows
-  `No running chats`.
-- The four-pet strip represents only Droppy-managed active tasks.
-  External tasks have a generic chat identity and no invented agent role.
-- A completed Droppy-managed task briefly highlights its exact chat row and, if
-  open, its chat status banner. The role-strip icon does not animate. Reduced
-  Motion keeps the completion state static instead of scaling the row.
-- Approvals, destructive actions, shell commands, and model changes stay in
-  Codex. Protected approval and input prompts are cancelled safely by the
-  integration.
+- Agent pets appear only inside the Codex dashboard and opened task rows;
+  Mission Control does not create a second four-icon status-bar item. Planner
+  is an owl, Builder A a beaver, Builder B a fox, and Reviewer a cat. External
+  tasks retain a generic chat identity and no invented agent role.
+- A completed Mission Control-managed task briefly highlights its exact chat row and, if
+  open, its chat status banner. Reduced Motion keeps the completion state
+  static instead of scaling the row.
+- Turns use an explicit `onRequest` approval policy and workspace-write sandbox
+  limited to the selected project, with network disabled. Protocol-specific
+  protected approval, permission, elicitation, and input prompts are cancelled
+  safely by the integration and surfaced to the user.
 - A bounded App Server reconnect handles transient process exits.
 - A newly started task is shown from its accepted turn immediately instead of
   reading the just-created rollout synchronously. Background history reads
@@ -127,14 +125,14 @@ notifications, then dismisses according to the behavior of that feature.
   other thread-read errors remain visible.
 - A separate supported App Server process cannot claim live status for chats
   currently owned by the Codex desktop runtime. In the live check, the Desktop
-  task was active while Droppy's separate App Server reported `notLoaded` but
+  task was active while Mission Control's separate App Server reported `notLoaded` but
   could read the persisted history. Existing external tasks therefore remain
-  read-only saved history in Droppy and are not treated as live by the role
+  read-only saved history in Mission Control and are not treated as live by the label
   strip.
 - OpenAI's first-party Remote connections can continue the same host chats from
   a paired ChatGPT mobile app. The current App Server schema exposes remote
   status but no client request for third-party pairing or relay takeover, so
-  Droppy does not present that private first-party path as an integration API.
+  Mission Control does not present that private first-party path as an integration API.
 
 ## Delivery phases
 
@@ -224,15 +222,16 @@ single `Normal Chats` fallback, project-only search, project-and-role task
 creation limited to APUSH, Bitwise, and Droppy plus `Choose Folder...`, a
 saved-history viewer with `Open in Codex`,
 remaining capacity in the dashboard and opened histories, exact returned model
-caching for Droppy-started tasks, live follow-up messages for Droppy-owned
+caching for Mission Control-started tasks, live follow-up messages for Mission Control-owned
 tasks, bidirectional persisted `Hand Off`/`Bring Back` mobility using
-unsubscribe and resume, the top-right
-four-pet strip for Droppy-managed active tasks, generic identity for external tasks,
+unsubscribe and resume, in-dashboard pet labels for Mission Control-managed tasks,
+generic identity for external tasks,
 exact-chat completion feedback with Reduced Motion, and the persisted-history
-live-status finding documented above. The final mobility pass executed 78
-tests with zero failures, and `Scripts/build-debug.sh` produced the canonical
-`Builds/Droppy.app` successfully. Target-Mac acceptance and the local commit
-remain pending.
+live-status finding documented above. The final four-lane review pass executed
+84 tests with zero failures. The visible identity remains Mission Control while
+the internal `Builds/Droppy.app` path is preserved for encrypted clipboard
+Keychain compatibility; the runner targets that exact repository path and never
+kills a separately installed Droppy app. User interaction acceptance remains pending.
 
 The final polish phase must include purposeful animations across feature
 transitions and contextual overlays, plus a consistent color theme. Reduced

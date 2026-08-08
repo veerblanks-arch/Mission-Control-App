@@ -35,9 +35,6 @@ enum CodexAgentRole: String, CaseIterable, Codable, Identifiable {
         }
     }
 
-    var petTemplateAssetName: String {
-        "\(petAssetName)-template"
-    }
 }
 
 enum CodexRuntimeStatus: Equatable {

@@ -157,9 +157,37 @@ final class DroppyTests: XCTestCase {
 
         XCTAssertTrue(feature.wasHandedOffToCodex(handedOff.id))
         XCTAssertFalse(feature.isDroppyManaged(handedOff.id))
+        XCTAssertEqual(feature.role(for: handedOff.id), .reviewer)
         XCTAssertTrue(feature.canBringBackToDroppy(handedOff))
         XCTAssertFalse(feature.canBringBackToDroppy(handedOff.replacing(status: .running)))
         XCTAssertFalse(feature.canBringBackToDroppy(external))
+    }
+
+    @MainActor
+    func testLegacyOwnershipConflictMigratesSafelyAsHandedOff() throws {
+        let suiteName = "DroppyTests.CodexOwnershipMigration.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName)!
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+        defaults.set(
+            try JSONEncoder().encode(["thread": CodexAgentRole.builderA]),
+            forKey: "codexThreadRoleAssignments"
+        )
+        defaults.set(
+            try JSONEncoder().encode(["thread": CodexAgentRole.reviewer]),
+            forKey: "codexHandedOffRoleAssignments"
+        )
+
+        let migrated = CodexFeature(defaults: defaults)
+        XCTAssertFalse(migrated.isDroppyManaged("thread"))
+        XCTAssertTrue(migrated.wasHandedOffToCodex("thread"))
+        XCTAssertEqual(migrated.role(for: "thread"), .reviewer)
+
+        defaults.removeObject(forKey: "codexThreadRoleAssignments")
+        defaults.removeObject(forKey: "codexHandedOffRoleAssignments")
+        let reloaded = CodexFeature(defaults: defaults)
+        XCTAssertFalse(reloaded.isDroppyManaged("thread"))
+        XCTAssertTrue(reloaded.wasHandedOffToCodex("thread"))
+        XCTAssertEqual(reloaded.role(for: "thread"), .reviewer)
     }
 
     @MainActor
@@ -186,7 +214,95 @@ final class DroppyTests: XCTestCase {
             CodexAgentRole.allCases.map(\.petAssetName),
             ["planner-owl", "builder-a-beaver", "builder-b-fox", "reviewer-cat"]
         )
-        XCTAssertEqual(Set(CodexAgentRole.allCases.map(\.petTemplateAssetName)).count, 4)
+    }
+
+    @MainActor
+    func testCodexHistoryMergePreservesLongerStreamedTextAndOptimisticMessages() {
+        let history = [
+            CodexChatMessage(id: "agent-1", sender: .agent, text: "Partial"),
+        ]
+        let live = [
+            CodexChatMessage(id: "local-user", sender: .user, text: "Ship it"),
+            CodexChatMessage(id: "agent-1", sender: .agent, text: "Partial response"),
+        ]
+
+        XCTAssertEqual(
+            CodexFeature.mergeHistoryMessages(history, preservingLiveMessages: live),
+            [
+                CodexChatMessage(id: "agent-1", sender: .agent, text: "Partial response"),
+                CodexChatMessage(id: "local-user", sender: .user, text: "Ship it"),
+            ]
+        )
+    }
+
+    @MainActor
+    func testCodexTurnErrorMessageReadsNestedAndDirectErrors() {
+        XCTAssertEqual(
+            CodexFeature.turnErrorMessage(from: ["error": ["message": "Build failed"]]),
+            "Build failed"
+        )
+        XCTAssertEqual(
+            CodexFeature.turnErrorMessage(from: ["message": "Connection dropped"]),
+            "Connection dropped"
+        )
+        XCTAssertNil(CodexFeature.turnErrorMessage(from: ["error": [:]]))
+    }
+
+    @MainActor
+    func testCodexRequestsPinWorkspaceSandboxWithoutNetwork() {
+        let thread = CodexFeature.safeThreadStartParams(cwd: "/tmp/project")
+        XCTAssertEqual(thread["approvalPolicy"] as? String, "onRequest")
+        XCTAssertEqual(thread["sandbox"] as? String, "workspaceWrite")
+
+        let resume = CodexFeature.safeThreadResumeParams(
+            threadID: "thread",
+            cwd: "/tmp/project"
+        )
+        XCTAssertEqual(resume["threadId"] as? String, "thread")
+        XCTAssertEqual(resume["approvalPolicy"] as? String, "onRequest")
+        XCTAssertNil(resume["serviceName"])
+
+        let turn = CodexFeature.safeTurnStartParams(
+            threadID: "thread",
+            cwd: "/tmp/project",
+            input: [["type": "text", "text": "Build"]]
+        )
+        let sandbox = turn["sandboxPolicy"] as? [String: Any]
+        XCTAssertEqual(turn["approvalPolicy"] as? String, "onRequest")
+        XCTAssertEqual(sandbox?["type"] as? String, "workspaceWrite")
+        XCTAssertEqual(sandbox?["writableRoots"] as? [String], ["/tmp/project"])
+        XCTAssertEqual(sandbox?["networkAccess"] as? Bool, false)
+    }
+
+    func testCodexProtectedRequestsUseProtocolSpecificSafeRejections() {
+        XCTAssertEqual(
+            CodexAppServerClient.safeRejectionResult(
+                for: "item/commandExecution/requestApproval"
+            )?["decision"] as? String,
+            "cancel"
+        )
+        XCTAssertNotNil(
+            CodexAppServerClient.safeRejectionResult(
+                for: "item/permissions/requestApproval"
+            )?["permissions"] as? [String: Any]
+        )
+        XCTAssertEqual(
+            CodexAppServerClient.safeRejectionResult(
+                for: "mcpServer/elicitation/request"
+            )?["action"] as? String,
+            "cancel"
+        )
+        XCTAssertNil(CodexAppServerClient.safeRejectionResult(for: "unknown/request"))
+    }
+
+    @MainActor
+    func testCodexTurnStartRequiresARealTurnID() {
+        XCTAssertEqual(
+            CodexFeature.turnID(fromStartPayload: ["turn": ["id": "turn-1"]]),
+            "turn-1"
+        )
+        XCTAssertNil(CodexFeature.turnID(fromStartPayload: [:]))
+        XCTAssertNil(CodexFeature.turnID(fromStartPayload: ["turn": ["id": ""]]))
     }
 
     @MainActor
@@ -1143,7 +1259,7 @@ final class DroppyTests: XCTestCase {
 
         XCTAssertEqual(manager.items.count, 1)
         XCTAssertEqual(item.kind, .screenshot)
-        XCTAssertEqual(item.sourceAppName, "Droppy Snippet")
+        XCTAssertEqual(item.sourceAppName, "Mission Control Snippet")
         XCTAssertEqual(notificationCount, 1)
         XCTAssertEqual(manager.payload(for: item)?.screenshotOriginalPath, screenshotURL.path)
     }
@@ -1620,7 +1736,7 @@ final class DroppyTests: XCTestCase {
         let oldRootPID = session.terminalView.process.shellPid
         session.sendCommand("trap '' TERM; sleep 30 & wait")
 
-        let childDeadline = Date().addingTimeInterval(2)
+        let childDeadline = Date().addingTimeInterval(4)
         while
             TerminalProcessTree.childPIDs(of: oldRootPID).isEmpty,
             Date() < childDeadline
@@ -1690,7 +1806,7 @@ final class DroppyTests: XCTestCase {
         let oldRootPID = session.terminalView.process.shellPid
         session.sendCommand("trap '' TERM; sleep 30 & wait")
 
-        let childDeadline = Date().addingTimeInterval(2)
+        let childDeadline = Date().addingTimeInterval(4)
         while
             TerminalProcessTree.childPIDs(of: oldRootPID).isEmpty,
             Date() < childDeadline

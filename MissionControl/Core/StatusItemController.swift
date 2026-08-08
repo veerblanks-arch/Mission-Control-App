@@ -24,7 +24,7 @@ final class StatusItemController: NSObject {
         let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         item.button?.image = NSImage(
             systemSymbolName: "rectangle.on.rectangle.angled",
-            accessibilityDescription: "Droppy"
+            accessibilityDescription: "Mission Control"
         )
         item.button?.imagePosition = .imageOnly
         item.button?.target = self
@@ -69,10 +69,10 @@ final class StatusItemController: NSObject {
 
     private func showContextMenu() {
         let menu = NSMenu()
-        menu.addItem(menuItem(title: "Open Droppy", action: #selector(openDroppy)))
+        menu.addItem(menuItem(title: "Open Mission Control", action: #selector(openDroppy)))
         menu.addItem(menuItem(title: "Settings", action: #selector(showSettings)))
         menu.addItem(.separator())
-        menu.addItem(menuItem(title: "Quit Droppy", action: #selector(quit), keyEquivalent: "q"))
+        menu.addItem(menuItem(title: "Quit Mission Control", action: #selector(quit), keyEquivalent: "q"))
 
         guard let button = statusItem?.button else {
             return

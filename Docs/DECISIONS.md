@@ -38,19 +38,23 @@ Date: 2026-07-28
 - Calendar is out of scope; use the existing calendar app directly.
 - Media: Apple Music mini-player only; no separate navigation destination.
 - Codex: official App Server. Codex-created tasks remain read-only saved
-  history in Droppy and opening them never resumes them. Droppy-created tasks
-  support streamed responses and follow-up turns while Droppy owns them.
-  `Hand Off` calls `thread/unsubscribe`, removes Droppy's role ownership, and
-  then opens Codex. Droppy remembers that task's agent role, and an idle handed-
+  history in Mission Control and opening them never resumes them. Mission
+  Control-created tasks support streamed responses and follow-up turns while
+  Mission Control owns them. `Hand Off` calls `thread/unsubscribe`, atomically
+  records handed-off ownership, and then opens Codex. Mission Control remembers
+  that task's visual label, and an idle handed-
   off task can use `Bring Back` to call `thread/resume`, restore its original
-  role, reload the same history, and accept live Droppy replies again. Tasks
-  that originated outside Droppy remain read-only. A separate supported App
+  label, reload the same history, and accept live Mission Control replies again.
+  Tasks that originated outside Mission Control remain read-only. A separate supported App
   Server process cannot reliably report live status for chats currently owned
   by the Codex desktop runtime, so take-back is blocked whenever the observed
   status is active and rechecked after resume.
-- The four agent roles use a generated miniature pet family instead of SF
-  Symbols: Planner owl, Builder A beaver, Builder B fox, and Reviewer cat.
-  Menu-bar variants are adaptive template masks with white high-contrast tint.
+- Four visual task labels use a generated miniature pet family inside the Codex
+  dashboard: Planner owl, Builder A beaver, Builder B fox, and Reviewer cat.
+  Mission Control creates no extra agent or pet menu-bar items.
+- New turns pin an `onRequest` approval policy and a workspace-write sandbox
+  restricted to the selected project with network disabled. Protocol-specific
+  protected requests are rejected safely and remain visible as task issues.
 - New-task UI uses the accepted `thread/start` and `turn/start` state directly;
   it does not immediately depend on a readable rollout file. History loading
   retries only the known transient empty-session-metadata race.
@@ -184,13 +188,14 @@ Date: 2026-07-28
   expanding to show all of its chats; the
   New Task picker offers only APUSH, Bitwise, and Droppy, plus an intentional
   `Choose Folder...` escape hatch; the
-  always-visible four-pet strip represents only Droppy-managed active tasks in
-  its dropdowns; and
+  pet roles remain inside the Codex dashboard without adding a second
+  multi-icon status-bar item; and
   external tasks have a generic chat identity with no invented agent role.
   Completion feedback briefly highlights the exact chat row and open-chat
-  banner, never the agent icon. The live check found the Desktop task
+  banner. The live check found the Desktop task
   active while Droppy's separate App Server reported `notLoaded` but could read
-  persisted history. The final mobility pass executed 78 tests with zero
-  failures, and `Scripts/build-debug.sh` produced the canonical
-  `Builds/Droppy.app` successfully. Target-Mac acceptance and the local commit
-  remain pending.
+  persisted history. The final four-lane review pass executed 84 tests with
+  zero failures. The visible identity remains Mission Control while the internal
+  `Builds/Droppy.app` path is preserved for encrypted clipboard Keychain
+  compatibility; the runner targets that exact repository path and never kills
+  a separately installed Droppy app. User interaction acceptance remains pending.

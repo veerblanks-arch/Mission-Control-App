@@ -291,7 +291,7 @@ final class NotesFeature: ObservableObject {
     }
 
     func reportExportError(_ error: Error) {
-        exportErrorMessage = "Droppy could not export this note."
+        exportErrorMessage = "Mission Control could not export this note."
     }
 
     func pruneTrash(now: Date = Date()) {
@@ -308,7 +308,7 @@ final class NotesFeature: ObservableObject {
         if store.save(candidate) {
             notes = candidateNotes
         } else {
-            storageErrorMessage = "Droppy could not clean up expired notes."
+            storageErrorMessage = "Mission Control could not clean up expired notes."
         }
     }
 
@@ -342,7 +342,7 @@ final class NotesFeature: ObservableObject {
         }
         storageErrorMessage = saved
             ? nil
-            : "Droppy could not save your notes."
+            : "Mission Control could not save your notes."
         return saved
     }
 
@@ -369,7 +369,7 @@ final class NotesFeature: ObservableObject {
             storageErrorMessage = nil
             return true
         } else {
-            storageErrorMessage = "Droppy could not save your notes."
+            storageErrorMessage = "Mission Control could not save your notes."
             return false
         }
     }
@@ -389,7 +389,7 @@ final class NotesFeature: ObservableObject {
                 pendingSaveWorkItem = nil
                 storageErrorMessage = saved
                     ? nil
-                    : "Droppy could not save your notes."
+                    : "Mission Control could not save your notes."
             }
         }
         pendingSaveWorkItem = workItem
