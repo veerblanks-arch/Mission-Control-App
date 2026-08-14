@@ -71,6 +71,7 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		0DFE01F7302EDBB5007B38E8 /* Droppy.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Droppy.entitlements; sourceTree = "<group>"; };
 		200000000000000000000001 /* DroppyApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DroppyApp.swift; sourceTree = "<group>"; };
 		200000000000000000000002 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		200000000000000000000004 /* OnboardingWindowController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingWindowController.swift; sourceTree = "<group>"; };
@@ -148,8 +149,9 @@
 		700000000000000000000001 = {
 			isa = PBXGroup;
 			children = (
+				0DFE01F7302EDBB5007B38E8 /* Droppy.entitlements */,
 				700000000000000000000002 /* MissionControl */,
-				700000000000000000000012 /* DroppyTests */,
+				700000000000000000000012 /* MissionControlTests */,
 				700000000000000000000013 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -224,6 +226,41 @@
 				200000000000000000000022 /* ScreenshotNotificationCoordinator.swift */,
 			);
 			path = ClipboardStrip;
+			sourceTree = "<group>";
+		};
+		700000000000000000000010 /* Storage */ = {
+			isa = PBXGroup;
+			children = (
+				200000000000000000000008 /* Settings.swift */,
+			);
+			path = Storage;
+			sourceTree = "<group>";
+		};
+		700000000000000000000011 /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				200000000000000000000011 /* Info.plist */,
+				B70000000000000000000001 /* CodexPets */,
+				B70000000000000000000002 /* CommandMode */,
+			);
+			path = Resources;
+			sourceTree = "<group>";
+		};
+		700000000000000000000012 /* MissionControlTests */ = {
+			isa = PBXGroup;
+			children = (
+				200000000000000000000010 /* DroppyTests.swift */,
+			);
+			path = MissionControlTests;
+			sourceTree = "<group>";
+		};
+		700000000000000000000013 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				200000000000000000000012 /* Droppy.app */,
+				200000000000000000000013 /* DroppyTests.xctest */,
+			);
+			name = Products;
 			sourceTree = "<group>";
 		};
 		700000000000000000000014 /* DropZone */ = {
@@ -326,24 +363,6 @@
 			path = CommandMode;
 			sourceTree = "<group>";
 		};
-		700000000000000000000010 /* Storage */ = {
-			isa = PBXGroup;
-			children = (
-				200000000000000000000008 /* Settings.swift */,
-			);
-			path = Storage;
-			sourceTree = "<group>";
-		};
-		700000000000000000000011 /* Resources */ = {
-			isa = PBXGroup;
-			children = (
-				200000000000000000000011 /* Info.plist */,
-				B70000000000000000000001 /* CodexPets */,
-				B70000000000000000000002 /* CommandMode */,
-			);
-			path = Resources;
-			sourceTree = "<group>";
-		};
 		B70000000000000000000001 /* CodexPets */ = {
 			isa = PBXGroup;
 			children = (
@@ -361,23 +380,6 @@
 				B20000000000000000000005 /* mission-control-core.png */,
 			);
 			path = CommandMode;
-			sourceTree = "<group>";
-		};
-		700000000000000000000012 /* DroppyTests */ = {
-			isa = PBXGroup;
-			children = (
-				200000000000000000000010 /* DroppyTests.swift */,
-			);
-			path = MissionControlTests;
-			sourceTree = "<group>";
-		};
-		700000000000000000000013 /* Products */ = {
-			isa = PBXGroup;
-			children = (
-				200000000000000000000012 /* Droppy.app */,
-				200000000000000000000013 /* DroppyTests.xctest */,
-			);
-			name = Products;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -439,7 +441,7 @@
 					};
 				};
 			};
-			buildConfigurationList = 900000000000000000000001 /* Build configuration list for PBXProject "Droppy" */;
+			buildConfigurationList = 900000000000000000000001 /* Build configuration list for PBXProject "MissionControl" */;
 			compatibilityVersion = "Xcode 14.0";
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
@@ -448,10 +450,10 @@
 				Base,
 			);
 			mainGroup = 700000000000000000000001;
-			productRefGroup = 700000000000000000000013 /* Products */;
 			packageReferences = (
 				A000000000000000000000001 /* XCRemoteSwiftPackageReference "SwiftTerm" */,
 			);
+			productRefGroup = 700000000000000000000013 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
@@ -546,25 +548,6 @@
 		};
 /* End PBXTargetDependency section */
 
-/* Begin XCRemoteSwiftPackageReference section */
-		A000000000000000000000001 /* XCRemoteSwiftPackageReference "SwiftTerm" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/migueldeicaza/SwiftTerm";
-			requirement = {
-				kind = exactVersion;
-				version = 1.11.2;
-			};
-		};
-/* End XCRemoteSwiftPackageReference section */
-
-/* Begin XCSwiftPackageProductDependency section */
-		A000000000000000000000002 /* SwiftTerm */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = A000000000000000000000001 /* XCRemoteSwiftPackageReference "SwiftTerm" */;
-			productName = SwiftTerm;
-		};
-/* End XCSwiftPackageProductDependency section */
-
 /* Begin XCBuildConfiguration section */
 		900000000000000000000002 /* Debug */ = {
 			isa = XCBuildConfiguration;
@@ -630,8 +613,10 @@
 		900000000000000000000004 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = Droppy.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
+				DEVELOPMENT_TEAM = BCWV7DNVVB;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = MissionControl/Resources/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -650,8 +635,10 @@
 		900000000000000000000005 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = Droppy.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
+				DEVELOPMENT_TEAM = BCWV7DNVVB;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = MissionControl/Resources/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -752,7 +739,7 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		900000000000000000000001 /* Build configuration list for PBXProject "Droppy" */ = {
+		900000000000000000000001 /* Build configuration list for PBXProject "MissionControl" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				900000000000000000000002 /* Debug */,
@@ -780,6 +767,25 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		A000000000000000000000001 /* XCRemoteSwiftPackageReference "SwiftTerm" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/migueldeicaza/SwiftTerm";
+			requirement = {
+				kind = exactVersion;
+				version = 1.11.2;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		A000000000000000000000002 /* SwiftTerm */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = A000000000000000000000001 /* XCRemoteSwiftPackageReference "SwiftTerm" */;
+			productName = SwiftTerm;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 400000000000000000000001 /* Project object */;
 }

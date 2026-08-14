@@ -9,6 +9,12 @@ enum RealtimeAPIKeyStoreError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case let .keychain(status):
+            if status == errSecAuthFailed {
+                return "macOS Keychain denied access to the Silverdeck voice credential. Relaunch the latest signed build and try saving it again."
+            }
+            if status == errSecInteractionNotAllowed {
+                return "Unlock your Mac login Keychain, then try saving the OpenAI API key again."
+            }
             return "The OpenAI API key could not be accessed in Keychain (\(status))."
         case .invalidKey:
             return "Enter a valid OpenAI API key."
@@ -17,7 +23,9 @@ enum RealtimeAPIKeyStoreError: LocalizedError {
 }
 
 struct RealtimeAPIKeyStore {
-    private let service = "com.ranveer.droppy.realtime"
+    // Keep voice credentials separate from the legacy ad-hoc-signed Droppy item.
+    // That item can retain an ACL which rebuilt apps can no longer satisfy.
+    private let service = "com.ranveer.silverdeck.realtime"
     private let account = "openai-api-key-v1"
 
     func load() throws -> String? {
@@ -25,6 +33,7 @@ struct RealtimeAPIKeyStore {
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
             kSecAttrAccount as String: account,
+            kSecUseDataProtectionKeychain as String: true,
             kSecReturnData as String: true,
             kSecMatchLimit as String: kSecMatchLimitOne,
         ]
@@ -52,6 +61,7 @@ struct RealtimeAPIKeyStore {
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
             kSecAttrAccount as String: account,
+            kSecUseDataProtectionKeychain as String: true,
         ]
         let updateStatus = SecItemUpdate(
             query as CFDictionary,
@@ -76,6 +86,7 @@ struct RealtimeAPIKeyStore {
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
             kSecAttrAccount as String: account,
+            kSecUseDataProtectionKeychain as String: true,
         ]
         let status = SecItemDelete(query as CFDictionary)
         guard status == errSecSuccess || status == errSecItemNotFound else {
