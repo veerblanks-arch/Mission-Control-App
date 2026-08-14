@@ -36,7 +36,7 @@ final class OverlayPanelController: NSWindowController, NSWindowDelegate {
             backing: .buffered,
             defer: false
         )
-        panel.title = "Mission Control"
+        panel.title = "Silverdeck"
         panel.isFloatingPanel = true
         panel.level = .popUpMenu
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .transient]
@@ -130,6 +130,14 @@ final class OverlayPanelController: NSWindowController, NSWindowDelegate {
         if let threadID {
             codex.openThread(id: threadID)
         }
+        show(relativeTo: statusButton)
+    }
+
+    func showFeature(
+        _ feature: OverlayFeature,
+        relativeTo statusButton: NSStatusBarButton
+    ) {
+        model.showFeature(feature)
         show(relativeTo: statusButton)
     }
 
@@ -303,7 +311,7 @@ final class OverlayPanelModel: ObservableObject {
 
     var displayedSubtitle: String {
         if isSearchPresented {
-            return "Across Mission Control"
+            return "Across Silverdeck"
         }
         if isTerminalPresented {
             return "Retained shell sessions"

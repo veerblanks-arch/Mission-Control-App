@@ -44,10 +44,20 @@
 		10000000000000000000002C /* CodexFeature.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20000000000000000000002E /* CodexFeature.swift */; };
 		10000000000000000000002D /* CodexView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20000000000000000000002F /* CodexView.swift */; };
 		10000000000000000000002E /* NotionConnectorFeature.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000030 /* NotionConnectorFeature.swift */; };
+		10000000000000000000002F /* CommandModeModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000031 /* CommandModeModels.swift */; };
+		100000000000000000000030 /* CommandModeFeature.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000032 /* CommandModeFeature.swift */; };
+		100000000000000000000031 /* CommandModeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000033 /* CommandModeView.swift */; };
+		100000000000000000000032 /* CommandModePanelController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000034 /* CommandModePanelController.swift */; };
+		100000000000000000000033 /* GlobalHotKeyController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000035 /* GlobalHotKeyController.swift */; };
+		100000000000000000000034 /* CommandVoiceInput.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000036 /* CommandVoiceInput.swift */; };
+		100000000000000000000035 /* ConversationalVoiceModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000037 /* ConversationalVoiceModels.swift */; };
+		100000000000000000000036 /* RealtimeVoiceClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000038 /* RealtimeVoiceClient.swift */; };
+		100000000000000000000037 /* ConversationalVoiceFeature.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000039 /* ConversationalVoiceFeature.swift */; };
 		B10000000000000000000001 /* planner-owl.png in Resources */ = {isa = PBXBuildFile; fileRef = B20000000000000000000001 /* planner-owl.png */; };
 		B10000000000000000000002 /* builder-a-beaver.png in Resources */ = {isa = PBXBuildFile; fileRef = B20000000000000000000002 /* builder-a-beaver.png */; };
 		B10000000000000000000003 /* builder-b-fox.png in Resources */ = {isa = PBXBuildFile; fileRef = B20000000000000000000003 /* builder-b-fox.png */; };
 		B10000000000000000000004 /* reviewer-cat.png in Resources */ = {isa = PBXBuildFile; fileRef = B20000000000000000000004 /* reviewer-cat.png */; };
+		B10000000000000000000005 /* mission-control-core.png in Resources */ = {isa = PBXBuildFile; fileRef = B20000000000000000000005 /* mission-control-core.png */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -100,10 +110,20 @@
 		20000000000000000000002E /* CodexFeature.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CodexFeature.swift; sourceTree = "<group>"; };
 		20000000000000000000002F /* CodexView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CodexView.swift; sourceTree = "<group>"; };
 		200000000000000000000030 /* NotionConnectorFeature.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotionConnectorFeature.swift; sourceTree = "<group>"; };
+		200000000000000000000031 /* CommandModeModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CommandModeModels.swift; sourceTree = "<group>"; };
+		200000000000000000000032 /* CommandModeFeature.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CommandModeFeature.swift; sourceTree = "<group>"; };
+		200000000000000000000033 /* CommandModeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CommandModeView.swift; sourceTree = "<group>"; };
+		200000000000000000000034 /* CommandModePanelController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CommandModePanelController.swift; sourceTree = "<group>"; };
+		200000000000000000000035 /* GlobalHotKeyController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlobalHotKeyController.swift; sourceTree = "<group>"; };
+		200000000000000000000036 /* CommandVoiceInput.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CommandVoiceInput.swift; sourceTree = "<group>"; };
+		200000000000000000000037 /* ConversationalVoiceModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConversationalVoiceModels.swift; sourceTree = "<group>"; };
+		200000000000000000000038 /* RealtimeVoiceClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RealtimeVoiceClient.swift; sourceTree = "<group>"; };
+		200000000000000000000039 /* ConversationalVoiceFeature.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConversationalVoiceFeature.swift; sourceTree = "<group>"; };
 		B20000000000000000000001 /* planner-owl.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "planner-owl.png"; sourceTree = "<group>"; };
 		B20000000000000000000002 /* builder-a-beaver.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "builder-a-beaver.png"; sourceTree = "<group>"; };
 		B20000000000000000000003 /* builder-b-fox.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "builder-b-fox.png"; sourceTree = "<group>"; };
 		B20000000000000000000004 /* reviewer-cat.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "reviewer-cat.png"; sourceTree = "<group>"; };
+		B20000000000000000000005 /* mission-control-core.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "mission-control-core.png"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -153,6 +173,7 @@
 				200000000000000000000002 /* AppDelegate.swift */,
 				200000000000000000000015 /* OverlayPanelController.swift */,
 				200000000000000000000016 /* OverlayRootView.swift */,
+				200000000000000000000034 /* CommandModePanelController.swift */,
 				200000000000000000000004 /* OnboardingWindowController.swift */,
 			);
 			path = App;
@@ -162,6 +183,7 @@
 			isa = PBXGroup;
 			children = (
 				200000000000000000000014 /* StatusItemController.swift */,
+				200000000000000000000035 /* GlobalHotKeyController.swift */,
 				200000000000000000000006 /* PermissionsManager.swift */,
 				200000000000000000000017 /* PanelGeometry.swift */,
 				200000000000000000000018 /* DropZoneGeometry.swift */,
@@ -183,6 +205,7 @@
 				70000000000000000000001B /* Media */,
 				70000000000000000000001C /* Codex */,
 				70000000000000000000001D /* Notion */,
+				70000000000000000000001E /* CommandMode */,
 			);
 			path = Features;
 			sourceTree = "<group>";
@@ -289,6 +312,20 @@
 			path = Notion;
 			sourceTree = "<group>";
 		};
+		70000000000000000000001E /* CommandMode */ = {
+			isa = PBXGroup;
+			children = (
+				200000000000000000000031 /* CommandModeModels.swift */,
+				200000000000000000000032 /* CommandModeFeature.swift */,
+				200000000000000000000033 /* CommandModeView.swift */,
+				200000000000000000000036 /* CommandVoiceInput.swift */,
+				200000000000000000000037 /* ConversationalVoiceModels.swift */,
+				200000000000000000000038 /* RealtimeVoiceClient.swift */,
+				200000000000000000000039 /* ConversationalVoiceFeature.swift */,
+			);
+			path = CommandMode;
+			sourceTree = "<group>";
+		};
 		700000000000000000000010 /* Storage */ = {
 			isa = PBXGroup;
 			children = (
@@ -302,6 +339,7 @@
 			children = (
 				200000000000000000000011 /* Info.plist */,
 				B70000000000000000000001 /* CodexPets */,
+				B70000000000000000000002 /* CommandMode */,
 			);
 			path = Resources;
 			sourceTree = "<group>";
@@ -315,6 +353,14 @@
 				B20000000000000000000004 /* reviewer-cat.png */,
 			);
 			path = CodexPets;
+			sourceTree = "<group>";
+		};
+		B70000000000000000000002 /* CommandMode */ = {
+			isa = PBXGroup;
+			children = (
+				B20000000000000000000005 /* mission-control-core.png */,
+			);
+			path = CommandMode;
 			sourceTree = "<group>";
 		};
 		700000000000000000000012 /* DroppyTests */ = {
@@ -424,6 +470,7 @@
 				B10000000000000000000002 /* builder-a-beaver.png in Resources */,
 				B10000000000000000000003 /* builder-b-fox.png in Resources */,
 				B10000000000000000000004 /* reviewer-cat.png in Resources */,
+				B10000000000000000000005 /* mission-control-core.png in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -469,6 +516,15 @@
 				10000000000000000000002C /* CodexFeature.swift in Sources */,
 				10000000000000000000002D /* CodexView.swift in Sources */,
 				10000000000000000000002E /* NotionConnectorFeature.swift in Sources */,
+				10000000000000000000002F /* CommandModeModels.swift in Sources */,
+				100000000000000000000030 /* CommandModeFeature.swift in Sources */,
+				100000000000000000000031 /* CommandModeView.swift in Sources */,
+				100000000000000000000032 /* CommandModePanelController.swift in Sources */,
+				100000000000000000000033 /* GlobalHotKeyController.swift in Sources */,
+				100000000000000000000034 /* CommandVoiceInput.swift in Sources */,
+				100000000000000000000035 /* ConversationalVoiceModels.swift in Sources */,
+				100000000000000000000036 /* RealtimeVoiceClient.swift in Sources */,
+				100000000000000000000037 /* ConversationalVoiceFeature.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

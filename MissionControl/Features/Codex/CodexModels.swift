@@ -164,3 +164,42 @@ enum CodexFeatureError: LocalizedError {
         }
     }
 }
+
+enum CodexApprovalKind: Equatable {
+    case command
+    case fileChange
+    case permissions
+}
+
+struct CodexApprovalRequest: Identifiable {
+    let id: Int
+    let kind: CodexApprovalKind
+    let threadID: String
+    let title: String
+    let detail: String
+    let command: String?
+    let requestedPermissions: [String: Any]?
+    let canApprove: Bool
+}
+
+struct CodexUserInputOption: Identifiable, Equatable {
+    let label: String
+    let description: String
+
+    var id: String { label }
+}
+
+struct CodexUserInputQuestion: Identifiable, Equatable {
+    let id: String
+    let header: String
+    let question: String
+    let isOther: Bool
+    let isSecret: Bool
+    let options: [CodexUserInputOption]
+}
+
+struct CodexUserInputRequest: Identifiable, Equatable {
+    let id: Int
+    let threadID: String
+    let questions: [CodexUserInputQuestion]
+}

@@ -390,11 +390,11 @@ private struct CodexChatView: View {
                     isDroppyManaged
                         ? thread.status.isRunning
                             ? "Wait for the current response before handing this task to Codex"
-                            : "Release Mission Control's live session and continue this task in Codex"
+                            : "Release Silverdeck's live session and continue this task in Codex"
                         : wasHandedOff
                         ? thread.status.isActive
                             ? "Wait for the current Codex response before bringing this task back"
-                            : "Resume this same task as a live Mission Control chat"
+                            : "Resume this same task as a live Silverdeck chat"
                         : "Open this saved task in Codex"
                 )
             }
@@ -408,17 +408,17 @@ private struct CodexChatView: View {
                     isRecentlyCompleted
                         ? "This chat just finished. You can reply below or hand it off to Codex."
                         : isDroppyManaged && thread.status == .waiting
-                        ? "Mission Control cancelled a protected request. Hand off to Codex to review and continue."
+                        ? "Silverdeck cancelled a protected request. Hand off to Codex to review and continue."
                         : wasHandedOff && thread.status == .waiting
                         ? "This task still needs attention in Codex. Bring it back after that request is resolved."
                         : thread.status == .waiting
                         ? "This saved task needs attention in Codex. Open it there to continue."
                         : isDroppyActive
-                        ? "Live in Mission Control. The current response is streaming into this chat."
+                        ? "Live in Silverdeck. The current response is streaming into this chat."
                         : isDroppyManaged
-                        ? "Live Mission Control chat. Reply below, or hand it off to continue in Codex."
+                        ? "Live Silverdeck chat. Reply below, or hand it off to continue in Codex."
                         : wasHandedOff
-                        ? "Handed off to Codex. Bring it back to continue this same task in Mission Control."
+                        ? "Handed off to Codex. Bring it back to continue this same task in Silverdeck."
                         : "Saved history only. Open in Codex to continue this task."
                 )
                 Spacer()
@@ -682,7 +682,7 @@ private struct CodexNewTaskView: View {
                 }
             }
 
-            Text("Mission Control keeps this chat live. Hand it off to Codex whenever you want.")
+            Text("Silverdeck keeps this chat live. Hand it off to Codex whenever you want.")
                 .font(.system(size: 10))
                 .foregroundStyle(.secondary)
 

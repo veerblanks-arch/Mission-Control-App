@@ -1,6 +1,6 @@
-# Mission Control
+# Silverdeck
 
-Mission Control is a native macOS menu-bar workspace for the things that
+Silverdeck is a native macOS menu-bar workspace for the things that
 usually interrupt your flow: copied content, files, notes, screenshots,
 terminal sessions, music, and AI coding tasks.
 
@@ -25,15 +25,20 @@ collection of separate windows.
 - **Apple Music** exposes a compact player with artwork, transport controls, and
   progress while music is available.
 - **Codex workspace** organizes project chats, starts new tasks with a project
-  and visual task label, shows live responses for tasks created in Mission Control, and
+  and visual task label, shows live responses for tasks created in Silverdeck, and
   opens external task history without pretending to own those sessions.
 - **Notion connector** opens Notion Calendar and keeps configurable shortcuts
   to frequently used Notion workspaces, databases, and pages.
+- **Command Mode** opens with Shift-Command-Space, handles common app, file,
+  folder, feature, and Notion requests immediately, and sends complex work to
+  a Silverdeck-managed Codex task. The shortcut starts a Realtime voice
+  conversation with streamed responses, interruption, typed follow-ups, and
+  completion updates from the Codex task it started.
 - **Unified Search** ranks results across Clipboard, Shelf, Files, and Notes.
 
 ## Design principles
 
-Mission Control is built around a few boundaries:
+Silverdeck is built around a few boundaries:
 
 - Local data stays local unless a feature explicitly needs an external service.
 - File organization uses references, so a Shelf action does not alter the
@@ -50,6 +55,7 @@ Mission Control is built around a few boundaries:
 - Xcode with the macOS SDK and command-line tools
 - Swift 5
 - Apple Music automation permission for the music controls
+- Optional microphone permission and an OpenAI API key for conversational voice
 - The normal macOS permissions required by the tools you choose to use
 
 ## Build
@@ -62,7 +68,7 @@ From the repository root:
 
 The debug application is written to `Builds/Droppy.app` for compatibility with
 the existing encrypted clipboard Keychain authorization. Its visible app name,
-menus, and accessibility identity are Mission Control. To run the debug target
+menus, and accessibility identity are Silverdeck. To run the debug target
 with the standard launch arguments, use:
 
 ```bash
@@ -70,6 +76,11 @@ with the standard launch arguments, use:
 ```
 
 To run the test suite in Xcode, select the `MissionControl` scheme and run the tests.
+
+For conversational voice, open Silverdeck Settings, enter an OpenAI API
+key, and choose **Save API Key**. The key is stored in this Mac's Keychain and
+is not displayed again. This direct-key setup is intended only for the personal
+local build; a distributed version should use backend-issued client credentials.
 
 ## Project layout
 
@@ -80,6 +91,6 @@ Scripts/                 Local build and debug helpers
 Docs/                    Product decisions and implementation notes
 ```
 
-Mission Control is a native AppKit application. Feature state is kept in
+Silverdeck is a native AppKit application. Feature state is kept in
 small, focused modules, while the menu-bar controller and overlay coordinate
 the shared workspace surface.

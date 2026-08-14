@@ -39,7 +39,7 @@ final class SnippetCaptureRunner: SnippetCaptureRunning {
         }
 
         let destinationURL = FileManager.default.temporaryDirectory
-            .appendingPathComponent("Mission-Control-Snippet-\(UUID().uuidString).png")
+            .appendingPathComponent("Silverdeck-Snippet-\(UUID().uuidString).png")
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/sbin/screencapture")
         process.arguments = SnippetCaptureCommand.arguments(
@@ -303,7 +303,7 @@ final class SnippetCaptureCoordinator {
         alert.alertStyle = .warning
         alert.messageText = "Screen Recording Permission Needed"
         alert.informativeText =
-            "Allow Mission Control in Privacy & Security > Screen Recording. After changing this permission, relaunch Mission Control and try again."
+            "Allow Silverdeck in Privacy & Security > Screen Recording. After changing this permission, relaunch Silverdeck and try again."
         alert.addButton(withTitle: "Open System Settings")
         alert.addButton(withTitle: "Cancel")
         if alert.runModal() == .alertFirstButtonReturn {
@@ -325,9 +325,9 @@ enum SnippetCaptureError: LocalizedError {
         case let .captureFailed(status):
             return "The macOS capture service exited with status \(status)."
         case .pngEncodingFailed:
-            return "Mission Control could not encode the annotated image as PNG."
+            return "Silverdeck could not encode the annotated image as PNG."
         case .clipboardInsertionFailed:
-            return "The image was saved, but Mission Control could not add it to Clipboard history."
+            return "The image was saved, but Silverdeck could not add it to Clipboard history."
         }
     }
 }

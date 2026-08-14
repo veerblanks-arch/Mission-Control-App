@@ -5,7 +5,7 @@ final class CodexAppServerClient {
     typealias Completion = (Result<JSONObject, Error>) -> Void
 
     var onNotification: ((String, JSONObject) -> Void)?
-    var onProtectedRequest: ((String, JSONObject) -> Void)?
+    var onProtectedRequest: ((Int, String, JSONObject) -> Void)?
     var onDisconnect: ((String) -> Void)?
 
     private let queue = DispatchQueue(label: "com.ranveer.droppy.codex-app-server")
@@ -83,7 +83,7 @@ final class CodexAppServerClient {
                     params: [
                         "clientInfo": [
                             "name": "mission-control",
-                            "title": "Mission Control",
+                            "title": "Silverdeck",
                             "version": Bundle.main.object(
                                 forInfoDictionaryKey: "CFBundleShortVersionString"
                             ) as? String ?? "0.1.0",
@@ -118,6 +118,21 @@ final class CodexAppServerClient {
                 return
             }
             _ = self.sendRequestLocked(method: method, params: params, completion: completion)
+        }
+    }
+
+    func respondToServerRequest(id: Int, result: JSONObject) {
+        queue.async { [weak self] in
+            self?.writeLocked(["id": id, "result": result])
+        }
+    }
+
+    func rejectServerRequest(id: Int, message: String) {
+        queue.async { [weak self] in
+            self?.writeLocked([
+                "id": id,
+                "error": ["code": -32601, "message": message],
+            ])
         }
     }
 
@@ -207,17 +222,19 @@ final class CodexAppServerClient {
     }
 
     private func handleServerRequest(id: Int, method: String, params: JSONObject) {
-        DispatchQueue.main.async { [weak self] in
-            self?.onProtectedRequest?(method, params)
+        guard onProtectedRequest != nil else {
+            if let result = Self.safeRejectionResult(for: method) {
+                writeLocked(["id": id, "result": result])
+            } else {
+                writeLocked([
+                    "id": id,
+                    "error": ["code": -32601, "message": "Handled in the Codex app"],
+                ])
+            }
+            return
         }
-
-        if let result = Self.safeRejectionResult(for: method) {
-            writeLocked(["id": id, "result": result])
-        } else {
-            writeLocked([
-                "id": id,
-                "error": ["code": -32601, "message": "Handled in the Codex app"],
-            ])
+        DispatchQueue.main.async { [weak self] in
+            self?.onProtectedRequest?(id, method, params)
         }
     }
 

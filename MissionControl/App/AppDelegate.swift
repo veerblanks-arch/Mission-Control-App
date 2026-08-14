@@ -6,6 +6,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private lazy var overlayPanelController = OverlayPanelController()
     private lazy var statusItemController = StatusItemController(
         overlayPanelController: overlayPanelController,
+        onShowCommandMode: { [weak self] in
+            self?.commandModePanelController.showCommandMode()
+        },
         onShowSettings: { [weak self] in
             self?.showSettings()
         },
@@ -22,6 +25,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private lazy var terminal = TerminalFeature.shared
     private lazy var media = MediaFeature.shared
     private lazy var codex = CodexFeature.shared
+    private lazy var commandMode = CommandModeFeature.shared
+    private lazy var commandModePanelController = CommandModePanelController(
+        feature: commandMode
+    )
+    private lazy var commandModeHotKey = GlobalHotKeyController { [weak self] in
+        self?.commandModePanelController.handleGlobalShortcut()
+    }
     private lazy var notes = NotesFeature.shared
     private lazy var dropZoneCoordinator = DropZoneCoordinator(shelf: shelf)
     private lazy var snippetCaptureCoordinator = SnippetCaptureCoordinator(
@@ -70,6 +80,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         clipboardManager.start()
         statusItemController.start()
         codex.start()
+        codex.onApprovalNeeded = { [weak self] in
+            self?.commandModePanelController.showCodexInteraction()
+        }
+        commandMode.onShowFeature = { [weak self] feature in
+            self?.statusItemController.showFeature(feature)
+        }
+        commandMode.onShowSettings = { [weak self] in
+            self?.showSettings()
+        }
+        commandModeHotKey.start()
         dropZoneCoordinator.start()
 
 #if DEBUG
@@ -86,6 +106,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if CommandLine.arguments.contains("--show-snippet-editor") {
             DispatchQueue.main.async { [weak self] in
                 self?.snippetCaptureCoordinator.showEditorForDebug()
+            }
+        }
+        if CommandLine.arguments.contains("--show-command-mode") {
+            DispatchQueue.main.async { [weak self] in
+                self?.commandModePanelController.showCommandMode()
+            }
+        }
+        if CommandLine.arguments.contains("--show-command-mode-listening") {
+            DispatchQueue.main.async { [weak self] in
+                self?.commandModePanelController.handleGlobalShortcut()
             }
         }
 #endif
@@ -135,7 +165,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let alert = NSAlert()
         alert.messageText = "Terminal sessions are still running"
         alert.informativeText =
-            "Quitting Mission Control will stop every shell and command running inside it."
+            "Quitting Silverdeck will stop every shell and command running inside it."
         alert.addButton(withTitle: "Quit and Stop Sessions")
         alert.addButton(withTitle: "Cancel")
 
@@ -147,7 +177,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 let alert = NSAlert()
                 alert.messageText = "A terminal process could not be stopped"
                 alert.informativeText =
-                    "Mission Control cancelled quitting so the process is not left behind."
+                    "Silverdeck cancelled quitting so the process is not left behind."
                 alert.addButton(withTitle: "OK")
                 alert.runModal()
             }
@@ -170,6 +200,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         guard hasCompletedStartup else { return }
         notes.flushPendingSave()
         media.stop()
+        commandModeHotKey.stop()
+        commandModePanelController.closeCommandMode()
         codex.stop()
         terminal.stopAll()
         dropZoneCoordinator.stop()
@@ -196,10 +228,10 @@ enum ApplicationMenu {
     static func make() -> NSMenu {
         let mainMenu = NSMenu()
 
-        let applicationItem = NSMenuItem(title: "Mission Control", action: nil, keyEquivalent: "")
-        let applicationMenu = NSMenu(title: "Mission Control")
+        let applicationItem = NSMenuItem(title: "Silverdeck", action: nil, keyEquivalent: "")
+        let applicationMenu = NSMenu(title: "Silverdeck")
         applicationMenu.addItem(
-            withTitle: "Quit Mission Control",
+            withTitle: "Quit Silverdeck",
             action: #selector(NSApplication.terminate(_:)),
             keyEquivalent: "q"
         )

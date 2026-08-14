@@ -11,9 +11,9 @@
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleName</key>
-	<string>Mission Control</string>
+	<string>Silverdeck</string>
 	<key>CFBundleDisplayName</key>
-	<string>Mission Control</string>
+	<string>Silverdeck</string>
 	<key>CFBundlePackageType</key>
 	<string>$(PRODUCT_BUNDLE_PACKAGE_TYPE)</string>
 	<key>CFBundleShortVersionString</key>
@@ -27,7 +27,11 @@
 	<key>NSHumanReadableCopyright</key>
 	<string>Copyright 2026 Ranveer. All rights reserved.</string>
 	<key>NSAppleEventsUsageDescription</key>
-	<string>Mission Control needs permission to read and control the currently playing track in Apple Music for its compact player.</string>
+	<string>Silverdeck needs permission to read and control the currently playing track in Apple Music for its compact player.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Silverdeck uses the microphone only during a conversational voice session you start.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>Silverdeck converts your spoken Command Mode request into text so it can open local items or start a Codex task.</string>
 	<key>NSPrincipalClass</key>
 	<string>NSApplication</string>
 </dict>

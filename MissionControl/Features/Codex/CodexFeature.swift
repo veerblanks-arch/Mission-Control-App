@@ -26,6 +26,8 @@ final class CodexFeature: ObservableObject {
     @Published private(set) var isTakingBack = false
     @Published private(set) var recentlyCompletedThreadIDs: Set<String> = []
     @Published private(set) var managedThreadIDs: Set<String>
+    @Published private(set) var pendingApprovals: [CodexApprovalRequest] = []
+    @Published private(set) var pendingUserInputs: [CodexUserInputRequest] = []
     @Published var projectQuery = ""
     @Published var lastIssue: String?
 
@@ -48,6 +50,9 @@ final class CodexFeature: ObservableObject {
     private var loadedHistoryDates: [String: Date] = [:]
     private var historyLoadToken: UUID?
     private var threadRefreshToken: UUID?
+    private var activeTurnIDsByThreadID: [String: String] = [:]
+    var onApprovalNeeded: (() -> Void)?
+    var onManagedTurnCompleted: ((String, String?) -> Void)?
 
     init(
         client: CodexAppServerClient = CodexAppServerClient(),
@@ -104,8 +109,12 @@ final class CodexFeature: ObservableObject {
         client.onNotification = { [weak self] method, params in
             self?.handleNotification(method: method, params: params)
         }
-        client.onProtectedRequest = { [weak self] method, params in
-            self?.handleProtectedRequest(method: method, params: params)
+        client.onProtectedRequest = { [weak self] requestID, method, params in
+            self?.handleProtectedRequest(
+                requestID: requestID,
+                method: method,
+                params: params
+            )
         }
         client.onDisconnect = { [weak self] message in
             guard let self else { return }
@@ -114,6 +123,8 @@ final class CodexFeature: ObservableObject {
             self.threadRefreshToken = nil
             self.historyLoadToken = nil
             self.isLoadingThread = false
+            self.pendingApprovals = []
+            self.pendingUserInputs = []
             self.threads = self.threads.map { $0.replacing(status: .unavailable) }
             if let selectedThread = self.selectedThread {
                 self.selectedThread = selectedThread.replacing(status: .unavailable)
@@ -163,8 +174,11 @@ final class CodexFeature: ObservableObject {
         completionClearWorkItems.values.forEach { $0.cancel() }
         completionClearWorkItems.removeAll()
         recentlyCompletedThreadIDs.removeAll()
+        activeTurnIDsByThreadID.removeAll()
         client.stop()
         connectionState = .stopped
+        pendingApprovals = []
+        pendingUserInputs = []
     }
 
     func refresh() {
@@ -579,14 +593,14 @@ final class CodexFeature: ObservableObject {
             return
         }
         guard managedThreadIDs.contains(thread.id) else {
-            lastIssue = "This task is read-only in Mission Control. Continue it in Codex."
+            lastIssue = "This task is read-only in Silverdeck. Continue it in Codex."
             completion?(false)
             return
         }
         guard let currentThread = threads.first(where: { $0.id == thread.id })
             ?? (selectedThread?.id == thread.id ? selectedThread : nil)
         else {
-            lastIssue = "Mission Control could not find that task."
+            lastIssue = "Silverdeck could not find that task."
             completion?(false)
             return
         }
@@ -640,6 +654,56 @@ final class CodexFeature: ObservableObject {
         }
     }
 
+    func steerActiveTurn(
+        prompt: String,
+        threadID: String,
+        completion: @escaping (Bool) -> Void
+    ) {
+        let trimmedPrompt = prompt.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard managedThreadIDs.contains(threadID) else {
+            lastIssue = "That task is no longer managed here."
+            completion(false)
+            return
+        }
+        guard let turnID = activeTurnIDsByThreadID[threadID] else {
+            lastIssue = "The active Codex turn could not be found."
+            completion(false)
+            return
+        }
+        guard !trimmedPrompt.isEmpty else {
+            completion(false)
+            return
+        }
+
+        lastIssue = nil
+        client.request(
+            method: "turn/steer",
+            params: [
+                "threadId": threadID,
+                "expectedTurnId": turnID,
+                "input": Self.userInputs(prompt: trimmedPrompt, attachments: []),
+            ]
+        ) { [weak self] result in
+            guard let self else { return }
+            switch result {
+            case .success:
+                if self.selectedThread?.id == threadID {
+                    self.messages.append(
+                        CodexChatMessage(
+                            id: "droppy-local-\(UUID().uuidString)",
+                            sender: .user,
+                            text: trimmedPrompt
+                        )
+                    )
+                }
+                completion(true)
+            case let .failure(error):
+                self.lastIssue = error.localizedDescription
+                completion(false)
+            }
+        }
+    }
+
     func handOffToCodex(_ threadID: String) {
         guard managedThreadIDs.contains(threadID) else {
             openInCodex(threadID)
@@ -649,7 +713,7 @@ final class CodexFeature: ObservableObject {
         guard let thread = threads.first(where: { $0.id == threadID })
             ?? (selectedThread?.id == threadID ? selectedThread : nil)
         else {
-            lastIssue = "Mission Control could not find that task."
+            lastIssue = "Silverdeck could not find that task."
             return
         }
         guard !thread.status.isRunning else {
@@ -680,14 +744,14 @@ final class CodexFeature: ObservableObject {
             !managedThreadIDs.contains(threadID),
             let role = handedOffRoleAssignments[threadID]
         else {
-            lastIssue = "Only tasks previously handed off by Mission Control can be brought back."
+            lastIssue = "Only tasks previously handed off by Silverdeck can be brought back."
             return
         }
         guard !isTakingBack, !isHandingOff, !isSending else { return }
         guard let thread = threads.first(where: { $0.id == threadID })
             ?? (selectedThread?.id == threadID ? selectedThread : nil)
         else {
-            lastIssue = "Mission Control could not find that task."
+            lastIssue = "Silverdeck could not find that task."
             return
         }
         guard !thread.status.isActive else {
@@ -738,7 +802,7 @@ final class CodexFeature: ObservableObject {
                 self.refresh()
             case let .failure(error):
                 self.isTakingBack = false
-                self.lastIssue = "Could not bring this task back to Mission Control: \(error.localizedDescription)"
+                self.lastIssue = "Could not bring this task back to Silverdeck: \(error.localizedDescription)"
             }
         }
     }
@@ -763,7 +827,7 @@ final class CodexFeature: ObservableObject {
                 if self.selectedThread?.id == threadID {
                     self.selectedThread = fallbackThread
                 }
-                self.lastIssue = "\(message) Mission Control could not release its temporary subscription, so it kept the task here safely: \(error.localizedDescription)"
+                self.lastIssue = "\(message) Silverdeck could not release its temporary subscription, so it kept the task here safely: \(error.localizedDescription)"
             }
             self.refresh()
         }
@@ -824,7 +888,7 @@ final class CodexFeature: ObservableObject {
             self.isSending = false
             switch result {
             case let .success(payload):
-                guard Self.turnID(fromStartPayload: payload) != nil else {
+                guard let turnID = Self.turnID(fromStartPayload: payload) else {
                     self.rollbackOptimisticTurn(
                         threadID: threadID,
                         optimisticMessageID: optimisticMessageID,
@@ -835,6 +899,7 @@ final class CodexFeature: ObservableObject {
                     )
                     return
                 }
+                self.activeTurnIDsByThreadID[threadID] = turnID
                 let baseThread = threadToOpen
                     ?? self.threads.first(where: { $0.id == threadID })
                     ?? (self.selectedThread?.id == threadID ? self.selectedThread : nil)
@@ -938,7 +1003,7 @@ final class CodexFeature: ObservableObject {
                         self.selectedThread = guardedThread
                     }
                 }
-                self.lastIssue = "\(error.localizedDescription) Mission Control could not release the new task subscription, so it kept the task here safely: \(releaseError.localizedDescription)"
+                self.lastIssue = "\(error.localizedDescription) Silverdeck could not release the new task subscription, so it kept the task here safely: \(releaseError.localizedDescription)"
             }
             self.refresh()
             completion?(false)
@@ -952,7 +1017,7 @@ final class CodexFeature: ObservableObject {
     ) {
         guard let role = roleAssignments[thread.id] else {
             isSending = false
-            lastIssue = "Mission Control no longer owns this task. Open it in Codex to continue."
+            lastIssue = "Silverdeck no longer owns this task. Open it in Codex to continue."
             failure?(false)
             return
         }
@@ -991,7 +1056,7 @@ final class CodexFeature: ObservableObject {
                 completion(resumed)
             case let .failure(error):
                 self.isSending = false
-                self.lastIssue = "Could not resume this task in Mission Control: \(error.localizedDescription)"
+                self.lastIssue = "Could not resume this task in Silverdeck: \(error.localizedDescription)"
                 failure?(false)
             }
         }
@@ -1019,7 +1084,7 @@ final class CodexFeature: ObservableObject {
                 self.lastIssue = message
             case let .failure(error):
                 self.setOwnership(.managed, role: role, threadID: threadID)
-                self.lastIssue = "\(message) Mission Control could not release its temporary subscription, so it kept the task here safely: \(error.localizedDescription)"
+                self.lastIssue = "\(message) Silverdeck could not release its temporary subscription, so it kept the task here safely: \(error.localizedDescription)"
             }
             self.refresh()
             failure?(false)
@@ -1149,6 +1214,7 @@ final class CodexFeature: ObservableObject {
             guard let threadID = params["threadId"] as? String else { return }
             let turn = params["turn"] as? [String: Any]
             let status = turn?["status"] as? String
+            activeTurnIDsByThreadID[threadID] = nil
             if
                 selectedThread?.id == threadID,
                 status == "failed" || status == "interrupted"
@@ -1167,6 +1233,12 @@ final class CodexFeature: ObservableObject {
                     ?? (selectedThread?.id == threadID ? selectedThread : nil)
             {
                 pulseCompletion(for: thread, turnID: turnID)
+            }
+            if managedThreadIDs.contains(threadID), status == "completed" {
+                let finalMessage = selectedThread?.id == threadID
+                    ? messages.last(where: { $0.sender == .agent })?.text
+                    : nil
+                onManagedTurnCompleted?(threadID, finalMessage)
             }
             refresh()
             if selectedThread?.id == threadID { refreshSelectedThreadHistory() }
@@ -1241,23 +1313,243 @@ final class CodexFeature: ObservableObject {
         return turnID
     }
 
-    private func handleProtectedRequest(method: String, params: [String: Any]) {
+    private func handleProtectedRequest(
+        requestID: Int,
+        method: String,
+        params: [String: Any]
+    ) {
         guard
             let threadID = params["threadId"] as? String,
             managedThreadIDs.contains(threadID)
-        else { return }
-        lastIssue = "Codex requested an approval or additional input. Mission Control cancelled it safely; hand off the chat to Codex to review and continue."
+        else {
+            rejectProtectedRequest(requestID: requestID, method: method)
+            return
+        }
+
+        if let userInput = Self.userInputRequest(
+            requestID: requestID,
+            method: method,
+            params: params
+        ) {
+            pendingUserInputs.removeAll { $0.id == requestID }
+            pendingUserInputs.append(userInput)
+            lastIssue = nil
+            if selectedThread?.id == threadID, let selectedThread {
+                self.selectedThread = selectedThread.replacing(status: .waiting)
+            }
+            onApprovalNeeded?()
+            return
+        }
+
+        guard let approval = Self.approvalRequest(
+            requestID: requestID,
+            method: method,
+            params: params
+        ) else {
+            rejectProtectedRequest(requestID: requestID, method: method)
+            lastIssue = "Codex requested additional input that Command Mode cannot present yet. Silverdeck cancelled that request safely."
+            return
+        }
+
+        pendingApprovals.removeAll { $0.id == requestID }
+        pendingApprovals.append(approval)
+        lastIssue = nil
         if selectedThread?.id == threadID, let selectedThread {
             self.selectedThread = selectedThread.replacing(status: .waiting)
         }
-        _ = method
+        onApprovalNeeded?()
+    }
+
+    func respondToUserInput(id: Int, answers: [String: [String]]) {
+        guard pendingUserInputs.contains(where: { $0.id == id }) else { return }
+        let payload = Self.userInputResponse(answers: answers)
+        pendingUserInputs.removeAll { $0.id == id }
+        client.respondToServerRequest(id: id, result: payload)
+        refresh()
+    }
+
+    func cancelUserInput(id: Int) {
+        respondToUserInput(id: id, answers: [:])
+    }
+
+    func respondToApproval(id: Int, approved: Bool) {
+        guard let approval = pendingApprovals.first(where: { $0.id == id }) else {
+            return
+        }
+        let result = Self.approvalResponse(for: approval, approved: approved)
+        pendingApprovals.removeAll { $0.id == id }
+        client.respondToServerRequest(id: id, result: result)
+        refresh()
+    }
+
+    static func approvalResponse(
+        for approval: CodexApprovalRequest,
+        approved: Bool
+    ) -> [String: Any] {
+        switch approval.kind {
+        case .command, .fileChange:
+            return ["decision": approved ? "accept" : "decline"]
+        case .permissions:
+            return [
+                "permissions": approved ? (approval.requestedPermissions ?? [:]) : [:],
+                "scope": "turn",
+            ]
+        }
+    }
+
+    static func approvalRequest(
+        requestID: Int,
+        method: String,
+        params: [String: Any]
+    ) -> CodexApprovalRequest? {
+        guard let threadID = params["threadId"] as? String else { return nil }
+        let reason = (params["reason"] as? String)?.trimmingCharacters(
+            in: .whitespacesAndNewlines
+        )
+        switch method {
+        case "item/commandExecution/requestApproval":
+            let command = params["command"] as? String
+            let cwd = params["cwd"] as? String
+            let available = params["availableDecisions"] as? [Any]
+            let allowsAccept = available?.contains {
+                ($0 as? String) == "accept"
+            } ?? true
+            let detail = [reason, cwd.map { "Working directory: \($0)" }]
+                .compactMap { $0 }
+                .joined(separator: "\n")
+            return CodexApprovalRequest(
+                id: requestID,
+                kind: .command,
+                threadID: threadID,
+                title: "Allow this command?",
+                detail: detail.isEmpty ? "Codex wants to run a shell command." : detail,
+                command: command,
+                requestedPermissions: nil,
+                canApprove: allowsAccept
+            )
+
+        case "item/fileChange/requestApproval":
+            let grantRoot = params["grantRoot"] as? String
+            let detail = [reason, grantRoot.map { "Write access: \($0)" }]
+                .compactMap { $0 }
+                .joined(separator: "\n")
+            return CodexApprovalRequest(
+                id: requestID,
+                kind: .fileChange,
+                threadID: threadID,
+                title: "Allow these file changes?",
+                detail: detail.isEmpty
+                    ? "Codex wants to modify files in the selected project."
+                    : detail,
+                command: nil,
+                requestedPermissions: nil,
+                canApprove: true
+            )
+
+        case "item/permissions/requestApproval":
+            let permissions = params["permissions"] as? [String: Any] ?? [:]
+            let cwd = params["cwd"] as? String
+            let summary = permissionSummary(permissions)
+            let detail = [reason, cwd.map { "Working directory: \($0)" }, summary]
+                .compactMap { $0 }
+                .filter { !$0.isEmpty }
+                .joined(separator: "\n")
+            return CodexApprovalRequest(
+                id: requestID,
+                kind: .permissions,
+                threadID: threadID,
+                title: "Allow additional access?",
+                detail: detail,
+                command: nil,
+                requestedPermissions: permissions,
+                canApprove: true
+            )
+
+        default:
+            return nil
+        }
+    }
+
+    static func userInputRequest(
+        requestID: Int,
+        method: String,
+        params: [String: Any]
+    ) -> CodexUserInputRequest? {
+        guard
+            method == "item/tool/requestUserInput" || method == "tool/requestUserInput",
+            let threadID = params["threadId"] as? String,
+            let rawQuestions = params["questions"] as? [[String: Any]],
+            !rawQuestions.isEmpty
+        else { return nil }
+
+        let questions = rawQuestions.compactMap { value -> CodexUserInputQuestion? in
+            guard
+                let id = value["id"] as? String,
+                !id.isEmpty,
+                let header = value["header"] as? String,
+                let question = value["question"] as? String,
+                !question.isEmpty
+            else { return nil }
+            let options = (value["options"] as? [[String: Any]] ?? []).compactMap {
+                option -> CodexUserInputOption? in
+                guard let label = option["label"] as? String, !label.isEmpty else {
+                    return nil
+                }
+                return CodexUserInputOption(
+                    label: label,
+                    description: option["description"] as? String ?? ""
+                )
+            }
+            return CodexUserInputQuestion(
+                id: id,
+                header: header,
+                question: question,
+                isOther: value["isOther"] as? Bool ?? false,
+                isSecret: value["isSecret"] as? Bool ?? false,
+                options: options
+            )
+        }
+        guard questions.count == rawQuestions.count else { return nil }
+        return CodexUserInputRequest(
+            id: requestID,
+            threadID: threadID,
+            questions: questions
+        )
+    }
+
+    static func userInputResponse(answers: [String: [String]]) -> [String: Any] {
+        [
+            "answers": answers.mapValues { ["answers": $0] },
+        ]
+    }
+
+    private static func permissionSummary(_ permissions: [String: Any]) -> String? {
+        guard
+            JSONSerialization.isValidJSONObject(permissions),
+            let data = try? JSONSerialization.data(
+                withJSONObject: permissions,
+                options: [.prettyPrinted, .sortedKeys]
+            )
+        else { return nil }
+        return String(data: data, encoding: .utf8)
+    }
+
+    private func rejectProtectedRequest(requestID: Int, method: String) {
+        if let result = CodexAppServerClient.safeRejectionResult(for: method) {
+            client.respondToServerRequest(id: requestID, result: result)
+        } else {
+            client.rejectServerRequest(
+                id: requestID,
+                message: "This request must be handled in Codex."
+            )
+        }
     }
 
     static func safeThreadStartParams(cwd: String) -> [String: Any] {
         [
             "cwd": cwd,
-            "approvalPolicy": "onRequest",
-            "sandbox": "workspaceWrite",
+            "approvalPolicy": "on-request",
+            "sandbox": "workspace-write",
             "serviceName": "mission_control",
         ]
     }
@@ -1266,8 +1558,8 @@ final class CodexFeature: ObservableObject {
         [
             "threadId": threadID,
             "cwd": cwd,
-            "approvalPolicy": "onRequest",
-            "sandbox": "workspaceWrite",
+            "approvalPolicy": "on-request",
+            "sandbox": "workspace-write",
         ]
     }
 
@@ -1280,7 +1572,7 @@ final class CodexFeature: ObservableObject {
             "threadId": threadID,
             "cwd": cwd,
             "input": input,
-            "approvalPolicy": "onRequest",
+            "approvalPolicy": "on-request",
             "sandboxPolicy": [
                 "type": "workspaceWrite",
                 "writableRoots": [cwd],

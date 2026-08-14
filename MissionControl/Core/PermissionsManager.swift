@@ -7,7 +7,7 @@ final class PermissionsManager {
 
     var onboardingMessage: String {
         """
-        Mission Control lives in the menu bar. Clipboard, drag monitoring, and media features may ask for local-only macOS permissions here.
+        Silverdeck lives in the menu bar. Clipboard, drag monitoring, and media features may ask for local-only macOS permissions here.
         """
     }
 

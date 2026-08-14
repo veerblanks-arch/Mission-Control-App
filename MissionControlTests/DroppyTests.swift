@@ -146,6 +146,360 @@ final class DroppyTests: XCTestCase {
         )
     }
 
+    func testCommandModeResolvesCommonCommandsLocally() throws {
+        let home = URL(fileURLWithPath: "/Users/tester", isDirectory: true)
+        let xcode = CommandApplication(
+            name: "Xcode",
+            url: URL(fileURLWithPath: "/Applications/Xcode.app"),
+            bundleIdentifier: "com.apple.dt.Xcode"
+        )
+        let droppy = CommandApplication(
+            name: "Droppy",
+            url: URL(fileURLWithPath: "/Applications/Droppy.app"),
+            bundleIdentifier: "com.junecloud.Droppy"
+        )
+
+        let downloads = try XCTUnwrap(CommandModeResolver.resolve(
+            "Please open my Downloads",
+            applications: [xcode],
+            notionShortcuts: [],
+            projects: [],
+            homeURL: home
+        ))
+        XCTAssertEqual(
+            downloads.route,
+            .openPath(home.appendingPathComponent("Downloads", isDirectory: true))
+        )
+
+        let application = try XCTUnwrap(CommandModeResolver.resolve(
+            "launch Xcode",
+            applications: [xcode],
+            notionShortcuts: [],
+            projects: [],
+            homeURL: home
+        ))
+        XCTAssertEqual(application.route, .openApplication(xcode))
+
+        let droppyApplication = try XCTUnwrap(CommandModeResolver.resolve(
+            "open the Droppy app",
+            applications: [xcode, droppy],
+            notionShortcuts: [],
+            projects: [],
+            homeURL: home
+        ))
+        XCTAssertEqual(droppyApplication.route, .openApplication(droppy))
+
+        let feature = try XCTUnwrap(CommandModeResolver.resolve(
+            "can you pull up my files",
+            applications: [xcode],
+            notionShortcuts: [],
+            projects: [],
+            homeURL: home
+        ))
+        XCTAssertEqual(feature.route, .showFeature(.files))
+
+        for previousName in ["Silverdeck", "Emberdeck", "Mission Control"] {
+            let homeSurface = try XCTUnwrap(CommandModeResolver.resolve(
+                "show \(previousName)",
+                applications: [xcode],
+                notionShortcuts: [],
+                projects: [],
+                homeURL: home
+            ))
+            XCTAssertEqual(homeSurface.route, .showFeature(.clipboard))
+        }
+    }
+
+    func testCommandModeResolvesNotionCalendarAndSavedShortcut() throws {
+        let home = URL(fileURLWithPath: "/Users/tester", isDirectory: true)
+        let shortcut = NotionShortcut(
+            title: "School Workspace",
+            urlString: "https://www.notion.so/school"
+        )
+
+        let calendar = try XCTUnwrap(CommandModeResolver.resolve(
+            "open the calendar",
+            applications: [],
+            notionShortcuts: [shortcut],
+            projects: [],
+            homeURL: home
+        ))
+        XCTAssertEqual(calendar.route, .openNotionCalendar)
+
+        let workspace = try XCTUnwrap(CommandModeResolver.resolve(
+            "open school workspace",
+            applications: [],
+            notionShortcuts: [shortcut],
+            projects: [],
+            homeURL: home
+        ))
+        XCTAssertEqual(
+            workspace.route,
+            .openURL(URL(string: "https://www.notion.so/school")!)
+        )
+    }
+
+    func testCommandModeSearchesUnknownOpenTargetsBeforeUsingCodex() throws {
+        let resolution = try XCTUnwrap(CommandModeResolver.resolve(
+            "open latest resume",
+            applications: [],
+            notionShortcuts: [],
+            projects: [],
+            homeURL: URL(fileURLWithPath: "/Users/tester", isDirectory: true)
+        ))
+
+        XCTAssertEqual(
+            resolution.route,
+            .searchFiles(query: "resume", openFirst: true)
+        )
+
+        let politeResolution = try XCTUnwrap(CommandModeResolver.resolve(
+            "could you open the latest resume",
+            applications: [],
+            notionShortcuts: [],
+            projects: [],
+            homeURL: URL(fileURLWithPath: "/Users/tester", isDirectory: true)
+        ))
+        XCTAssertEqual(
+            politeResolution.route,
+            .searchFiles(query: "resume", openFirst: true)
+        )
+    }
+
+    func testCommandModeBuildsSafeTokenizedSpotlightQueries() {
+        XCTAssertEqual(
+            CommandFileSearchService.metadataQuery(for: "physics assignment"),
+            "kMDItemFSName == \"*physics*\"cd && kMDItemFSName == \"*assignment*\"cd"
+        )
+        XCTAssertEqual(
+            CommandFileSearchService.metadataQuery(for: "resume\"draft"),
+            "kMDItemFSName == \"*resume\\\"draft*\"cd"
+        )
+    }
+
+    func testCommandModeGlobalHotKeyRegistersOnTargetMac() {
+        let controller = GlobalHotKeyController {}
+        XCTAssertTrue(
+            controller.start(),
+            "Shift-Command-Space should be available for Command Mode"
+        )
+        controller.stop()
+    }
+
+    func testCommandModeShortcutOpensConversationThenEndsOnSecondPress() {
+        XCTAssertEqual(
+            CommandModePanelController.shortcutAction(
+                isVisible: false,
+                isListening: false
+            ),
+            .openAndListen
+        )
+        XCTAssertEqual(
+            CommandModePanelController.shortcutAction(
+                isVisible: true,
+                isListening: false
+            ),
+            .startListening
+        )
+        XCTAssertEqual(
+            CommandModePanelController.shortcutAction(
+                isVisible: true,
+                isListening: true
+            ),
+            .endConversation
+        )
+    }
+
+    func testCommandModeCorrectsObservedVoiceMisrecognitions() {
+        XCTAssertEqual(
+            CommandVoiceTranscriptNormalizer.normalize(
+                "Entropy run git status"
+            ),
+            "in Droppy run git status"
+        )
+        XCTAssertEqual(
+            CommandVoiceTranscriptNormalizer.normalize(
+                "Ask Kodaks, review this phase"
+            ),
+            "Ask Codex, review this phase"
+        )
+        XCTAssertEqual(
+            CommandVoiceTranscriptNormalizer.normalize(
+                "Explain entropy in thermodynamics"
+            ),
+            "Explain entropy in thermodynamics"
+        )
+    }
+
+    func testCommandModeAutoSubmitsOnlyRunnableVoiceCommands() {
+        XCTAssertFalse(CommandVoiceTranscriptNormalizer.isRunnable("open"))
+        XCTAssertFalse(CommandVoiceTranscriptNormalizer.isRunnable("in Droppy"))
+        XCTAssertFalse(CommandVoiceTranscriptNormalizer.isRunnable("ask Codex"))
+        XCTAssertTrue(CommandVoiceTranscriptNormalizer.isRunnable("open Downloads"))
+        XCTAssertTrue(CommandVoiceTranscriptNormalizer.isRunnable("run tests in Droppy"))
+    }
+
+    func testCommandModeRoutesCorrectedPunctuatedVoiceTaskToDroppy() throws {
+        let installedDroppy = CommandApplication(
+            name: "Droppy",
+            url: URL(fileURLWithPath: "/Applications/Droppy.app"),
+            bundleIdentifier: "com.junecloud.Droppy"
+        )
+        let corrected = CommandVoiceTranscriptNormalizer.normalize(
+            "Kodaks, run git status in Droppy."
+        )
+        let resolution = try XCTUnwrap(CommandModeResolver.resolve(
+            corrected,
+            applications: [installedDroppy],
+            notionShortcuts: [],
+            projects: [
+                CodexProjectOption(
+                    id: "droppy",
+                    name: "Droppy",
+                    path: "/Users/tester/Documents/Droppy Copy"
+                )
+            ],
+            homeURL: URL(fileURLWithPath: "/Users/tester", isDirectory: true)
+        ))
+
+        XCTAssertEqual(
+            resolution.route,
+            .codex(
+                prompt: "run git status in Droppy",
+                projectPath: "/Users/tester/Documents/Droppy Copy"
+            )
+        )
+    }
+
+    func testCommandModeRoutesComplexWorkToInferredCodexProject() throws {
+        let projects = [
+            CodexProjectOption(
+                id: "droppy",
+                name: "Droppy",
+                path: "/Users/tester/Documents/Droppy Copy"
+            ),
+            CodexProjectOption(
+                id: "bitwise",
+                name: "Bitwise",
+                path: "/Users/tester/Codex/Bitwise"
+            ),
+        ]
+        let prompt = "Review the Silverdeck tests and summarize failures"
+        let resolution = try XCTUnwrap(CommandModeResolver.resolve(
+            prompt,
+            applications: [],
+            notionShortcuts: [],
+            projects: projects,
+            homeURL: URL(fileURLWithPath: "/Users/tester", isDirectory: true)
+        ))
+
+        XCTAssertEqual(
+            resolution.route,
+            .codex(
+                prompt: prompt,
+                projectPath: "/Users/tester/Documents/Droppy Copy"
+            )
+        )
+        XCTAssertEqual(
+            CommandModeResolver.inferredProjectPath(
+                for: "Review this in Emberdeck",
+                projects: projects
+            ),
+            "/Users/tester/Documents/Droppy Copy"
+        )
+        XCTAssertEqual(
+            CommandModeResolver.inferredProjectPath(
+                for: "Review this in Mission Control",
+                projects: projects
+            ),
+            "/Users/tester/Documents/Droppy Copy"
+        )
+    }
+
+    func testCommandModeLeavesAmbiguousCodexProjectForClarification() throws {
+        let projects = [
+            CodexProjectOption(id: "droppy", name: "Droppy", path: "/Droppy"),
+            CodexProjectOption(id: "bitwise", name: "Bitwise", path: "/Bitwise"),
+        ]
+        let prompt = "compare the two documents and summarize the differences"
+        let resolution = try XCTUnwrap(CommandModeResolver.resolve(
+            "ask codex to \(prompt)",
+            applications: [],
+            notionShortcuts: [],
+            projects: projects,
+            homeURL: URL(fileURLWithPath: "/Users/tester", isDirectory: true)
+        ))
+
+        XCTAssertEqual(
+            resolution.route,
+            .codex(prompt: prompt, projectPath: nil)
+        )
+    }
+
+    func testConversationalVoiceUsesCurrentRealtimeAudioConfiguration() throws {
+        let update = ConversationalVoiceSessionBuilder.sessionUpdate(
+            projectNames: ["Droppy", "Bitwise"]
+        )
+        XCTAssertEqual(update["type"] as? String, "session.update")
+
+        let session = try XCTUnwrap(update["session"] as? [String: Any])
+        XCTAssertEqual(session["type"] as? String, "realtime")
+        XCTAssertEqual(session["model"] as? String, "gpt-realtime-2.1")
+
+        let audio = try XCTUnwrap(session["audio"] as? [String: Any])
+        let input = try XCTUnwrap(audio["input"] as? [String: Any])
+        let format = try XCTUnwrap(input["format"] as? [String: Any])
+        let transcription = try XCTUnwrap(input["transcription"] as? [String: Any])
+        let turnDetection = try XCTUnwrap(input["turn_detection"] as? [String: Any])
+        XCTAssertEqual(format["rate"] as? Int, 24_000)
+        XCTAssertEqual(transcription["model"] as? String, "gpt-live-transcribe")
+        XCTAssertEqual(turnDetection["type"] as? String, "semantic_vad")
+        XCTAssertEqual(turnDetection["interrupt_response"] as? Bool, true)
+
+        let output = try XCTUnwrap(audio["output"] as? [String: Any])
+        XCTAssertEqual(output["voice"] as? String, "marin")
+    }
+
+    func testConversationalVoiceExposesOnlyBoundedLocalAndCodexTools() throws {
+        let tools = ConversationalVoiceSessionBuilder.tools()
+        XCTAssertEqual(
+            tools.compactMap { $0["name"] as? String },
+            ["perform_local_action", "start_codex_task", "continue_codex_task"]
+        )
+        XCTAssertTrue(
+            ConversationalVoiceSessionBuilder.instructions(projectNames: ["Droppy"])
+                .contains("Available Codex projects: Droppy")
+        )
+    }
+
+    func testConversationalVoiceParsesCompletedFunctionCalls() throws {
+        let calls = ConversationalVoiceSessionBuilder.functionCalls(from: [
+            "type": "response.done",
+            "response": [
+                "output": [[
+                    "type": "function_call",
+                    "name": "start_codex_task",
+                    "call_id": "call-1",
+                    "arguments": "{\"prompt\":\"Run the tests\",\"project\":\"Droppy\"}",
+                ]],
+            ],
+        ])
+
+        let call = try XCTUnwrap(calls.first)
+        XCTAssertEqual(call.name, "start_codex_task")
+        XCTAssertEqual(call.callID, "call-1")
+        XCTAssertEqual(call.arguments["prompt"] as? String, "Run the tests")
+        XCTAssertEqual(call.arguments["project"] as? String, "Droppy")
+    }
+
+    func testConversationalVoiceStateTracksOnlyLiveSessionsAsActive() {
+        XCTAssertTrue(ConversationalVoiceState.listening.isSessionActive)
+        XCTAssertTrue(ConversationalVoiceState.speaking.isSessionActive)
+        XCTAssertTrue(ConversationalVoiceState.working("Opening…").isSessionActive)
+        XCTAssertFalse(ConversationalVoiceState.needsAPIKey.isSessionActive)
+        XCTAssertFalse(ConversationalVoiceState.failed("Offline").isSessionActive)
+    }
+
     @MainActor
     func testCodexThreadStatusParsingDistinguishesRunningWaitingAndUnavailable() {
         XCTAssertEqual(
@@ -303,15 +657,16 @@ final class DroppyTests: XCTestCase {
     @MainActor
     func testCodexRequestsPinWorkspaceSandboxWithoutNetwork() {
         let thread = CodexFeature.safeThreadStartParams(cwd: "/tmp/project")
-        XCTAssertEqual(thread["approvalPolicy"] as? String, "onRequest")
-        XCTAssertEqual(thread["sandbox"] as? String, "workspaceWrite")
+        XCTAssertEqual(thread["approvalPolicy"] as? String, "on-request")
+        XCTAssertEqual(thread["sandbox"] as? String, "workspace-write")
 
         let resume = CodexFeature.safeThreadResumeParams(
             threadID: "thread",
             cwd: "/tmp/project"
         )
         XCTAssertEqual(resume["threadId"] as? String, "thread")
-        XCTAssertEqual(resume["approvalPolicy"] as? String, "onRequest")
+        XCTAssertEqual(resume["approvalPolicy"] as? String, "on-request")
+        XCTAssertEqual(resume["sandbox"] as? String, "workspace-write")
         XCTAssertNil(resume["serviceName"])
 
         let turn = CodexFeature.safeTurnStartParams(
@@ -320,7 +675,7 @@ final class DroppyTests: XCTestCase {
             input: [["type": "text", "text": "Build"]]
         )
         let sandbox = turn["sandboxPolicy"] as? [String: Any]
-        XCTAssertEqual(turn["approvalPolicy"] as? String, "onRequest")
+        XCTAssertEqual(turn["approvalPolicy"] as? String, "on-request")
         XCTAssertEqual(sandbox?["type"] as? String, "workspaceWrite")
         XCTAssertEqual(sandbox?["writableRoots"] as? [String], ["/tmp/project"])
         XCTAssertEqual(sandbox?["networkAccess"] as? Bool, false)
@@ -345,6 +700,104 @@ final class DroppyTests: XCTestCase {
             "cancel"
         )
         XCTAssertNil(CodexAppServerClient.safeRejectionResult(for: "unknown/request"))
+    }
+
+    @MainActor
+    func testCodexBuildsReviewableCommandApprovalFromInstalledSchemaFields() throws {
+        let approval = try XCTUnwrap(CodexFeature.approvalRequest(
+            requestID: 42,
+            method: "item/commandExecution/requestApproval",
+            params: [
+                "threadId": "thread-1",
+                "turnId": "turn-1",
+                "itemId": "item-1",
+                "startedAtMs": 1,
+                "command": "git status --short",
+                "cwd": "/tmp/project",
+                "reason": "Inspect the working tree",
+                "availableDecisions": ["accept", "decline", "cancel"],
+            ]
+        ))
+
+        XCTAssertEqual(approval.id, 42)
+        XCTAssertEqual(approval.kind, .command)
+        XCTAssertEqual(approval.command, "git status --short")
+        XCTAssertTrue(approval.detail.contains("/tmp/project"))
+        XCTAssertTrue(approval.canApprove)
+        XCTAssertEqual(
+            CodexFeature.approvalResponse(for: approval, approved: true)["decision"] as? String,
+            "accept"
+        )
+        XCTAssertEqual(
+            CodexFeature.approvalResponse(for: approval, approved: false)["decision"] as? String,
+            "decline"
+        )
+    }
+
+    @MainActor
+    func testCodexPermissionApprovalGrantsOnlyRequestedProfileForOneTurn() throws {
+        let permissions: [String: Any] = [
+            "network": ["enabled": true],
+        ]
+        let approval = try XCTUnwrap(CodexFeature.approvalRequest(
+            requestID: 43,
+            method: "item/permissions/requestApproval",
+            params: [
+                "threadId": "thread-1",
+                "turnId": "turn-1",
+                "itemId": "item-1",
+                "startedAtMs": 1,
+                "cwd": "/tmp/project",
+                "permissions": permissions,
+            ]
+        ))
+
+        let approved = CodexFeature.approvalResponse(for: approval, approved: true)
+        XCTAssertEqual(approved["scope"] as? String, "turn")
+        XCTAssertEqual(
+            (approved["permissions"] as? [String: Any])?["network"] as? [String: Bool],
+            ["enabled": true]
+        )
+
+        let denied = CodexFeature.approvalResponse(for: approval, approved: false)
+        XCTAssertTrue((denied["permissions"] as? [String: Any])?.isEmpty == true)
+    }
+
+    @MainActor
+    func testCodexBuildsCompactUserInputAndSchemaShapedAnswers() throws {
+        let request = try XCTUnwrap(CodexFeature.userInputRequest(
+            requestID: 44,
+            method: "item/tool/requestUserInput",
+            params: [
+                "threadId": "thread-1",
+                "turnId": "turn-1",
+                "itemId": "item-1",
+                "isBlocking": true,
+                "questions": [
+                    [
+                        "id": "project",
+                        "header": "Project",
+                        "question": "Which project should I use?",
+                        "isOther": true,
+                        "isSecret": false,
+                        "options": [
+                            ["label": "Droppy", "description": "Use Silverdeck"],
+                            ["label": "Bitwise", "description": "Use cooling work"],
+                        ],
+                    ],
+                ],
+            ]
+        ))
+
+        XCTAssertEqual(request.questions.count, 1)
+        XCTAssertEqual(request.questions[0].options.map(\.label), ["Droppy", "Bitwise"])
+        XCTAssertTrue(request.questions[0].isOther)
+
+        let response = CodexFeature.userInputResponse(
+            answers: ["project": ["Droppy"]]
+        )
+        let answers = response["answers"] as? [String: [String: [String]]]
+        XCTAssertEqual(answers?["project"]?["answers"], ["Droppy"])
     }
 
     @MainActor
@@ -1311,7 +1764,7 @@ final class DroppyTests: XCTestCase {
 
         XCTAssertEqual(manager.items.count, 1)
         XCTAssertEqual(item.kind, .screenshot)
-        XCTAssertEqual(item.sourceAppName, "Mission Control Snippet")
+        XCTAssertEqual(item.sourceAppName, "Silverdeck Snippet")
         XCTAssertEqual(notificationCount, 1)
         XCTAssertEqual(manager.payload(for: item)?.screenshotOriginalPath, screenshotURL.path)
     }

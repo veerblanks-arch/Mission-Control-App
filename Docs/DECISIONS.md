@@ -38,23 +38,26 @@ Date: 2026-07-28
 - Calendar is out of scope; use the existing calendar app directly.
 - Media: Apple Music mini-player only; no separate navigation destination.
 - Codex: official App Server. Codex-created tasks remain read-only saved
-  history in Mission Control and opening them never resumes them. Mission
-  Control-created tasks support streamed responses and follow-up turns while
-  Mission Control owns them. `Hand Off` calls `thread/unsubscribe`, atomically
-  records handed-off ownership, and then opens Codex. Mission Control remembers
+  history in Silverdeck and opening them never resumes them. Silverdeck-created
+  tasks support streamed responses and follow-up turns while
+  Silverdeck owns them. `Hand Off` calls `thread/unsubscribe`, atomically
+  records handed-off ownership, and then opens Codex. Silverdeck remembers
   that task's visual label, and an idle handed-
   off task can use `Bring Back` to call `thread/resume`, restore its original
-  label, reload the same history, and accept live Mission Control replies again.
-  Tasks that originated outside Mission Control remain read-only. A separate supported App
+  label, reload the same history, and accept live Silverdeck replies again.
+  Tasks that originated outside Silverdeck remain read-only. A separate supported App
   Server process cannot reliably report live status for chats currently owned
   by the Codex desktop runtime, so take-back is blocked whenever the observed
   status is active and rechecked after resume.
 - Four visual task labels use a generated miniature pet family inside the Codex
   dashboard: Planner owl, Builder A beaver, Builder B fox, and Reviewer cat.
-  Mission Control creates no extra agent or pet menu-bar items.
-- New turns pin an `onRequest` approval policy and a workspace-write sandbox
-  restricted to the selected project with network disabled. Protocol-specific
-  protected requests are rejected safely and remain visible as task issues.
+  Silverdeck creates no extra agent or pet menu-bar items.
+- New threads pin an `on-request` approval policy and a `workspace-write`
+  sandbox mode; turns use the structured `workspaceWrite` sandbox policy.
+  restricted to the selected project with network disabled. Command, file, and
+  permission approvals are shown as one-time decisions in Command Mode, and
+  supported Codex questions can be answered there. Unsupported protected
+  requests are rejected safely and remain visible as task issues.
 - New-task UI uses the accepted `thread/start` and `turn/start` state directly;
   it does not immediately depend on a readable rollout file. History loading
   retries only the known transient empty-session-metadata race.
@@ -103,7 +106,7 @@ Date: 2026-07-28
 
 ## Polish
 
-- Defer the full aesthetic pass until Phase 8.
+- Defer the full aesthetic pass until Phase 9.
 - Add purposeful animations for panel navigation, contextual overlays, and
   success or attention states.
 - Establish a cohesive app-wide color theme while preserving system contrast
@@ -176,8 +179,7 @@ Date: 2026-07-28
   switching. Eleven focused Apple Music tests passed, the canonical
   `Builds/Droppy.app` build succeeded, and the user accepted the live target-Mac
   result.
-- Phase 7 Codex: implemented and verified in code, but target-Mac acceptance
-  and the local commit are pending. Do not mark accepted yet. Existing tasks
+- Phase 7 Codex: accepted, committed, and pushed in `4393df5`. Existing tasks
   are read-only saved history in Droppy and opening them never resumes them;
   Droppy-owned tasks support streamed responses and follow-up turns through
   its App Server, while `Hand Off` unsubscribes Droppy before opening Codex.
@@ -195,7 +197,46 @@ Date: 2026-07-28
   banner. The live check found the Desktop task
   active while Droppy's separate App Server reported `notLoaded` but could read
   persisted history. The final four-lane review pass executed 84 tests with
-  zero failures. The visible identity remains Mission Control while the internal
+  zero failures. The visible identity remains Silverdeck while the internal
   `Builds/Droppy.app` path is preserved for encrypted clipboard Keychain
   compatibility; the runner targets that exact repository path and never kills
-  a separately installed Droppy app. User interaction acceptance remains pending.
+  a separately installed Droppy app.
+- Post-Phase-7 Notion connector: committed and pushed in `f6f406d`. The tab
+  opens Notion Calendar and Notion home and stores configurable Notion links.
+- Phase 8 Command Mode: authorized and in progress. Use a global keyboard-first
+  compact panel. Resolve app, file, folder, URL, Notion, and Silverdeck
+  navigation locally. Route complex multi-step work to a Silverdeck-managed
+  Codex task. Ask for clarification when the target or project
+  is ambiguous. Do not require confirmation for opening existing targets;
+  require explicit approval for destructive, write, shell, or external actions.
+  The first Shift-Command-Space press opens Command Mode and starts a
+  conversational Realtime session; a second press or Escape ends it. Realtime
+  transcription receives explicit Droppy, Codex, Notion, project, and app
+  vocabulary hints. Menu-bar openings stay silent so they never activate the
+  microphone unexpectedly, while Codex approvals can reuse an already-open
+  conversation window without resetting that session.
+  Installed app matching may complete a short app target such as `Chrome`, but
+  an app name inside a longer task sentence never captures that task. Explicit
+  `Open Droppy` opens the app; `In Droppy, review…` targets the Droppy project.
+  Target-Mac feedback showed that Apple Speech required too much manual
+  correction for command use, which led to the Realtime conversational upgrade
+  documented below. The first live Codex handoff also exposed stale camel-case
+  thread options. Every start,
+  resume, and turn path now uses the installed schema's `on-request` approval
+  policy; thread start and resume use `workspace-write`, while turn start keeps
+  the structured `workspaceWrite` sandbox-policy type. Regression assertions
+  cover each path.
+  Preserve the supplied amber command-core image as the static source for a
+  later animation pass.
+
+- Phase 8 conversational voice upgrade: replace Apple Speech as the shortcut's
+  primary voice path with an OpenAI Realtime WebSocket session using
+  `gpt-realtime-2.1`, `gpt-live-transcribe`, semantic turn detection, streamed
+  PCM audio, and interruption. Keep the model's tools deliberately narrow:
+  immediate local navigation, starting a Silverdeck-managed Codex task,
+  and continuing only the Codex task started by that voice session. Codex
+  approvals and user questions remain visible in Command Mode. For this
+  personal local build, keep the API key in macOS Keychain; a distributable
+  build must replace direct standard-key authentication with a backend-issued
+  client credential. Live microphone/API acceptance remains a separate gate
+  from compilation and deterministic tests.

@@ -341,7 +341,7 @@ struct UnifiedSearchView: View {
             Image(systemName: "magnifyingglass")
                 .font(.system(size: 32, weight: .semibold))
                 .foregroundStyle(.secondary)
-            Text("Search Mission Control")
+            Text("Search Silverdeck")
                 .font(.system(size: 14, weight: .semibold))
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)

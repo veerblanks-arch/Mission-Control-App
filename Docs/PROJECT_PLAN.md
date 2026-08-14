@@ -1,19 +1,19 @@
-# Mission Control Native macOS Project Plan
+# Silverdeck Native macOS Project Plan
 
 ## Product direction
 
-Mission Control is a native Swift/AppKit menu-bar productivity utility. It launches
+Silverdeck is a native Swift/AppKit menu-bar productivity utility. It launches
 quietly as an `LSUIElement` app with no Dock icon. Its ordinary status item can
 be hidden by Ice. Clicking the item opens a resizable panel anchored beneath
 the real menu-bar button.
 
-Mission Control does not keep a permanent fake island over the menu bar. The top-center
+Silverdeck does not keep a permanent fake island over the menu bar. The top-center
 surface is contextual: it appears for file drags, screenshots, and Codex task
 notifications, then dismisses according to the behavior of that feature.
 
 ## Core interaction
 
-- Main panel: anchored below the Mission Control status item, resizable, closes on
+- Main panel: anchored below the Silverdeck status item, resizable, closes on
   click-away or Escape, and preserves drafts.
 - Drop zone: appears at the top-center of the display under the cursor after a
   short drag hover. It accepts multiple files and folders.
@@ -49,7 +49,7 @@ notifications, then dismisses according to the behavior of that feature.
 - Files support Quick Look, open, drag-out, Reveal in Finder, and Copy Path.
 - Notes are separate, local, searchable, autosaved, and exportable. Deleted
   notes remain recoverable for 30 days.
-- Mission Control includes an embedded command runner for project scripts, streaming
+- Silverdeck includes an embedded command runner for project scripts, streaming
   output, and long-running jobs. Apple Terminal remains the default external
   terminal, with configurable adapters later.
 - New command sessions start in the current favorite folder or selected Codex
@@ -87,17 +87,17 @@ notifications, then dismisses according to the behavior of that feature.
 - Show Codex-created tasks as read-only saved history: task title, project,
   status, recent exchange, and model when available. Opening an external task
   never resumes it.
-- Mission Control-created tasks remain live in Mission Control: the active response streams into
+- Silverdeck-created tasks remain live in Silverdeck: the active response streams into
   the opened chat, and each idle task accepts follow-up messages and file
   attachments through the same App Server. After relaunch, a still-managed
   saved task is resumed only when the user sends a new reply.
 - `Hand Off` is available after the current response finishes. It unsubscribes
-  Mission Control, atomically records handed-off ownership, and only then opens
-  the task in Codex. Mission Control persists the handed-off task's original
+  Silverdeck, atomically records handed-off ownership, and only then opens
+  the task in Codex. Silverdeck persists the handed-off task's original
   visual label. When the task is idle, `Bring Back` resumes that same thread
-  through Mission Control's App Server, restores the label, reloads its history,
-  and makes replies live in Mission Control again. Tasks that did not originate
-  in Mission Control remain read-only.
+  through Silverdeck's App Server, restores the label, reloads its history,
+  and makes replies live in Silverdeck again. Tasks that did not originate
+  in Silverdeck remain read-only.
 - Show remaining account capacity as a simple percentage (`100 - usedPercent`).
   Keep it visible in both the dashboard and opened chats.
 - File drops open a reviewable new-task composer. Images attach directly;
@@ -108,16 +108,18 @@ notifications, then dismisses according to the behavior of that feature.
   Droppy, with `Choose Folder...` available for an intentional one-off path.
   Tasks use the current Codex default model.
 - Agent pets appear only inside the Codex dashboard and opened task rows;
-  Mission Control does not create a second four-icon status-bar item. Planner
+  Silverdeck does not create a second four-icon status-bar item. Planner
   is an owl, Builder A a beaver, Builder B a fox, and Reviewer a cat. External
   tasks retain a generic chat identity and no invented agent role.
-- A completed Mission Control-managed task briefly highlights its exact chat row and, if
+- A completed Silverdeck-managed task briefly highlights its exact chat row and, if
   open, its chat status banner. Reduced Motion keeps the completion state
   static instead of scaling the row.
-- Turns use an explicit `onRequest` approval policy and workspace-write sandbox
-  limited to the selected project, with network disabled. Protocol-specific
-  protected approval, permission, elicitation, and input prompts are cancelled
-  safely by the integration and surfaced to the user.
+- Threads use an explicit `on-request` approval policy and `workspace-write`
+  sandbox mode; turns use the structured `workspaceWrite` sandbox policy.
+  limited to the selected project, with network disabled. Command, file-change,
+  and permission approvals are shown in Command Mode and apply once. Supported
+  Codex questions can also be answered there; unsupported protected requests
+  are cancelled safely.
 - A bounded App Server reconnect handles transient process exits.
 - A newly started task is shown from its accepted turn immediately instead of
   reading the just-created rollout synchronously. Background history reads
@@ -125,14 +127,14 @@ notifications, then dismisses according to the behavior of that feature.
   other thread-read errors remain visible.
 - A separate supported App Server process cannot claim live status for chats
   currently owned by the Codex desktop runtime. In the live check, the Desktop
-  task was active while Mission Control's separate App Server reported `notLoaded` but
+  task was active while Silverdeck's separate App Server reported `notLoaded` but
   could read the persisted history. Existing external tasks therefore remain
-  read-only saved history in Mission Control and are not treated as live by the label
+  read-only saved history in Silverdeck and are not treated as live by the label
   strip.
 - OpenAI's first-party Remote connections can continue the same host chats from
   a paired ChatGPT mobile app. The current App Server schema exposes remote
   status but no client request for third-party pairing or relay takeover, so
-  Mission Control does not present that private first-party path as an integration API.
+  Silverdeck does not present that private first-party path as an integration API.
 
 ## Delivery phases
 
@@ -145,7 +147,11 @@ notifications, then dismisses according to the behavior of that feature.
 5. Files, Notes, Terminal, and unified search.
 6. Apple Music mini-player.
 7. Codex.
-8. Polish, accessibility, performance, launch at login, settings, motion
+8. Command Mode: a global keyboard-first command surface, deterministic local
+   app/file/folder/URL actions, Codex fallback for complex work, and guarded
+   approvals for sensitive actions. Realtime voice provides a conversational
+   layer over those bounded local and Codex tools.
+9. Polish, accessibility, performance, launch at login, settings, motion
    design, and a cohesive app-wide color theme.
 
 Each phase must build successfully, be tested on the target Mac, receive a
@@ -215,23 +221,73 @@ compact command-error presentation, and the canonical `Builds/Droppy.app` build
 succeeded. The target-Mac Apple Music and mini-player UI result was accepted by
 the user.
 
-Phase 7 Codex is implemented and verified in code, but target-Mac acceptance
-and the local commit are pending. It must not be treated as accepted yet.
+Phase 7 Codex is accepted, committed, and pushed. The accepted implementation
+is recorded in commit `4393df5`.
 The verified scope includes the recent-project expandable dashboard with a
 single `Normal Chats` fallback, project-only search, project-and-role task
 creation limited to APUSH, Bitwise, and Droppy plus `Choose Folder...`, a
 saved-history viewer with `Open in Codex`,
 remaining capacity in the dashboard and opened histories, exact returned model
-caching for Mission Control-started tasks, live follow-up messages for Mission Control-owned
+caching for Silverdeck-started tasks, live follow-up messages for Silverdeck-owned
 tasks, bidirectional persisted `Hand Off`/`Bring Back` mobility using
-unsubscribe and resume, in-dashboard pet labels for Mission Control-managed tasks,
+unsubscribe and resume, in-dashboard pet labels for Silverdeck-managed tasks,
 generic identity for external tasks,
 exact-chat completion feedback with Reduced Motion, and the persisted-history
 live-status finding documented above. The final four-lane review pass executed
-84 tests with zero failures. The visible identity remains Mission Control while
+84 tests with zero failures. The visible identity remains Silverdeck while
 the internal `Builds/Droppy.app` path is preserved for encrypted clipboard
 Keychain compatibility; the runner targets that exact repository path and never
-kills a separately installed Droppy app. User interaction acceptance remains pending.
+kills a separately installed Droppy app.
+
+The post-Phase-7 Notion connector is committed and pushed in `f6f406d`. It
+opens Notion Calendar, opens Notion home, and stores configurable links to
+Notion workspaces, databases, and pages.
+
+## Phase 8 — Command Mode
+
+Phase 8 adds a compact system-level command surface that does not require
+opening a chat. Pressing the global keyboard shortcut opens the panel and starts
+listening immediately. The user can speak naturally, hear a streamed response,
+interrupt it, and continue the same conversation. Common navigation commands
+resolve locally and run immediately; requests that require code, files, shell
+commands, research, or multiple steps become Silverdeck-managed Codex
+tasks without ending the voice session.
+
+1. Define a deterministic command registry and route model.
+2. Add a global hotkey and compact, keyboard-focused command panel.
+3. Support local app, file, folder, URL, Notion, and Silverdeck actions.
+4. Ask a compact clarification when several local targets match.
+5. Infer the relevant approved project and route complex work through the
+   existing Codex App Server client.
+6. Keep opening and navigation automatic, while destructive, write, shell, or
+   external actions require an explicit approval surface.
+7. Start voice capture only after an explicit shortcut press. Use OpenAI
+   Realtime semantic turn detection for natural back-and-forth speech, streamed
+   audio, interruption, and vocabulary-guided transcription. Store the personal
+   API key in macOS Keychain. A second shortcut press or Escape ends the
+   session. Always-listening wake-word behavior is outside this phase.
+8. Test the command resolver, project inference, safety boundaries, global
+   invocation, packaged resources, and live target-Mac behavior.
+
+### Phase 8 chart
+
+| Lane | Deliverable | Status |
+| --- | --- | --- |
+| Foundation | Route model, built-in command registry, and global Shift-Command-Space voice invocation | Complete |
+| Local actions | Open Silverdeck features, apps, folders, files, URLs, and Notion destinations | Complete |
+| Codex fallback | Start a managed Codex task for complex requests with compact project clarification | Complete |
+| Safety | One-time command, file-change, and permission approvals plus compact Codex questions | Complete |
+| Conversational voice | OpenAI Realtime audio, semantic turn detection, interruption, live transcript, and typed follow-ups | Implemented; live API acceptance pending |
+| Voice tools | Continue ordinary conversation, open bounded local targets, start a managed Codex task, steer its active turn, and report completion back into voice | Implemented; live acceptance pending |
+| Credentials | Personal API key stored only in macOS Keychain and never rendered back into the command surface | Complete |
+| Visual core | Preserve the supplied amber command-core asset for the later animation pass | Complete |
+| Verification | Automated tests, canonical app build, and packaged-resource checks | 104 tests pass; canonical `Builds/Droppy.app` packages successfully |
+| Target-Mac acceptance | Add the API key, verify microphone-to-Realtime audio, interruption, Droppy/Codex vocabulary, local opening, and managed Codex handoff | Pending user acceptance |
+
+The original amber command-core reference supplied for this phase is preserved
+at `MissionControl/Resources/CommandMode/mission-control-core.png`. It remains
+static during the command-engine work and is reserved for the later animation
+pass.
 
 The final polish phase must include purposeful animations across feature
 transitions and contextual overlays, plus a consistent color theme. Reduced

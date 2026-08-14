@@ -55,7 +55,7 @@ struct MediaIssue: Error, Equatable {
                 kind: .permissionDenied,
                 title: "Automation permission is required",
                 message:
-                    "Allow Mission Control to control Apple Music in System Settings > Privacy & Security > Automation."
+                    "Allow Silverdeck to control Apple Music in System Settings > Privacy & Security > Automation."
             )
         }
 
