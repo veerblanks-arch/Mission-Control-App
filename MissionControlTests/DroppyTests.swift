@@ -76,7 +76,6 @@ final class DroppyTests: XCTestCase {
     }
 
     func testMiniMediaPlayerUsesPausedReadySnapshot() {
-        let model = OverlayPanelModel()
         let pausedSnapshot = MediaSnapshot(
             title: "Paused Track",
             artist: "Artist",
@@ -89,9 +88,62 @@ final class DroppyTests: XCTestCase {
         XCTAssertFalse(pausedSnapshot.isPlaying)
         XCTAssertNotNil(MediaDisplayState.ready(pausedSnapshot).snapshot)
         XCTAssertNil(MediaDisplayState.idle.snapshot)
-        XCTAssertEqual(OverlayFeature.allCases.count, 5)
+        XCTAssertEqual(OverlayFeature.allCases.count, 6)
         XCTAssertFalse(OverlayFeature.allCases.map(\.rawValue).contains("media"))
         XCTAssertTrue(OverlayFeature.allCases.map(\.rawValue).contains("codex"))
+        XCTAssertTrue(OverlayFeature.allCases.map(\.rawValue).contains("notion"))
+    }
+
+    @MainActor
+    func testNotionConnectorPersistsAddedEditedAndRemovedShortcuts() throws {
+        let suiteName = "DroppyTests.NotionConnector.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+        let feature = NotionConnectorFeature(defaults: defaults)
+
+        XCTAssertTrue(
+            feature.addShortcut(
+                title: "  School  ",
+                urlString: "www.notion.so/school"
+            )
+        )
+        let shortcut = try XCTUnwrap(feature.shortcuts.first)
+        XCTAssertEqual(shortcut.title, "School")
+        XCTAssertEqual(shortcut.urlString, "https://www.notion.so/school")
+
+        XCTAssertTrue(
+            feature.updateShortcut(
+                id: shortcut.id,
+                title: "Classes",
+                urlString: "https://www.notion.so/classes"
+            )
+        )
+
+        let reloaded = NotionConnectorFeature(defaults: defaults)
+        XCTAssertEqual(
+            reloaded.shortcuts,
+            [
+                NotionShortcut(
+                    id: shortcut.id,
+                    title: "Classes",
+                    urlString: "https://www.notion.so/classes"
+                ),
+            ]
+        )
+
+        reloaded.removeShortcut(id: shortcut.id)
+        XCTAssertTrue(NotionConnectorFeature(defaults: defaults).shortcuts.isEmpty)
+    }
+
+    @MainActor
+    func testNotionConnectorRejectsUnsupportedOrIncompleteLinks() {
+        XCTAssertNil(NotionConnectorFeature.normalizedURLString(""))
+        XCTAssertNil(NotionConnectorFeature.normalizedURLString("file:///tmp/private"))
+        XCTAssertNil(NotionConnectorFeature.normalizedURLString("https://"))
+        XCTAssertEqual(
+            NotionConnectorFeature.normalizedURLString("notion://www.notion.so/tasks"),
+            "notion://www.notion.so/tasks"
+        )
     }
 
     @MainActor

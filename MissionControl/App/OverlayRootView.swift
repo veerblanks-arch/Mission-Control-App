@@ -10,6 +10,7 @@ struct OverlayRootView: View {
     @ObservedObject var terminal: TerminalFeature
     @ObservedObject var media: MediaFeature
     @ObservedObject var codex: CodexFeature
+    @ObservedObject var notion: NotionConnectorFeature
     @ObservedObject var unifiedSearch: UnifiedSearchFeature
     @State private var clipboardSearchText = ""
     @FocusState private var isSearchFieldFocused: Bool
@@ -95,6 +96,8 @@ struct OverlayRootView: View {
                 ShelfView(shelf: shelf)
             case .codex:
                 CodexView(feature: codex)
+            case .notion:
+                NotionConnectorView(feature: notion)
             case .files:
                 FileFinderView(feature: fileFinder)
             case .notes:
@@ -377,6 +380,7 @@ enum OverlayFeature: String, Identifiable, CaseIterable {
     case clipboard
     case shelf
     case codex
+    case notion
     case files
     case notes
 
@@ -390,6 +394,8 @@ enum OverlayFeature: String, Identifiable, CaseIterable {
             return "Shelf"
         case .codex:
             return "Codex"
+        case .notion:
+            return "Notion"
         case .files:
             return "Files"
         case .notes:
@@ -405,6 +411,8 @@ enum OverlayFeature: String, Identifiable, CaseIterable {
             return "tray"
         case .codex:
             return "sparkles"
+        case .notion:
+            return "square.grid.2x2"
         case .files:
             return "folder"
         case .notes:
@@ -420,6 +428,8 @@ enum OverlayFeature: String, Identifiable, CaseIterable {
             return "Persistent file references"
         case .codex:
             return "Projects and tasks"
+        case .notion:
+            return "Calendar and workspaces"
         case .files:
             return "Favorite folders"
         case .notes:

@@ -13,6 +13,7 @@ final class OverlayPanelController: NSWindowController, NSWindowDelegate {
     private let terminal = TerminalFeature.shared
     private let media = MediaFeature.shared
     private let codex = CodexFeature.shared
+    private let notion = NotionConnectorFeature.shared
     private let unifiedSearch: UnifiedSearchFeature
     private weak var anchorButton: NSStatusBarButton?
     private var globalMouseMonitor: Any?
@@ -60,6 +61,7 @@ final class OverlayPanelController: NSWindowController, NSWindowDelegate {
                 terminal: terminal,
                 media: media,
                 codex: codex,
+                notion: notion,
                 unifiedSearch: search
             )
         )

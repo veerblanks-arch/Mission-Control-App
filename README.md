@@ -27,6 +27,8 @@ collection of separate windows.
 - **Codex workspace** organizes project chats, starts new tasks with a project
   and visual task label, shows live responses for tasks created in Mission Control, and
   opens external task history without pretending to own those sessions.
+- **Notion connector** opens Notion Calendar and keeps configurable shortcuts
+  to frequently used Notion workspaces, databases, and pages.
 - **Unified Search** ranks results across Clipboard, Shelf, Files, and Notes.
 
 ## Design principles
