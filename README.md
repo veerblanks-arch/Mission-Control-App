@@ -31,9 +31,9 @@ collection of separate windows.
   to frequently used Notion workspaces, databases, and pages.
 - **Command Mode** opens with Shift-Command-Space, handles common app, file,
   folder, feature, and Notion requests immediately, and sends complex work to
-  a Silverdeck-managed Codex task. The shortcut starts a Realtime voice
-  conversation with streamed responses, interruption, typed follow-ups, and
-  completion updates from the Codex task it started.
+  a Silverdeck-managed Codex task. The shortcut starts a voice conversation
+  backed by the signed-in Codex App Server, with macOS transcription, streamed
+  spoken responses, interruption, typed follow-ups, and task updates.
 - **Unified Search** ranks results across Clipboard, Shelf, Files, and Notes.
 
 ## Design principles
@@ -55,7 +55,8 @@ Silverdeck is built around a few boundaries:
 - Xcode with the macOS SDK and command-line tools
 - Swift 5
 - Apple Music automation permission for the music controls
-- Optional microphone permission and an OpenAI API key for conversational voice
+- A signed-in Codex installation for Codex tasks and conversational voice
+- Optional microphone and Speech Recognition permissions for voice input
 - The normal macOS permissions required by the tools you choose to use
 
 ## Build
@@ -77,10 +78,9 @@ with the standard launch arguments, use:
 
 To run the test suite in Xcode, select the `MissionControl` scheme and run the tests.
 
-For conversational voice, open Silverdeck Settings, enter an OpenAI API
-key, and choose **Save API Key**. The key is stored in this Mac's Keychain and
-is not displayed again. This direct-key setup is intended only for the personal
-local build; a distributed version should use backend-issued client credentials.
+Conversational voice uses the existing Codex account session. It does not need
+an OpenAI API key. Press Shift-Command-Space and allow microphone and Speech
+Recognition access when macOS asks.
 
 ## Project layout
 

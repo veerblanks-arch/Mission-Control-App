@@ -156,29 +156,38 @@ final class CommandModeFeature: ObservableObject {
         self.codex = codex
         self.applications = applications
             ?? Self.discoverApplications(fileManager: fileManager, homeURL: homeURL)
+        voice.onStateChange = { [weak conversation] state in
+            conversation?.handleVoiceState(state)
+        }
         voice.onTranscript = { [weak self] transcript in
-            self?.query = transcript
+            guard let self else { return }
+            self.conversation.receivePartialTranscript(transcript)
+            self.query = self.conversation.liveUserTranscript
         }
         voice.onSubmit = { [weak self] transcript in
             guard let self else { return }
-            self.query = transcript
-            self.submit()
+            self.query = ""
+            self.conversation.receiveFinalTranscript(transcript)
         }
-        conversation.onLocalAction = { [weak self] request, completion in
-            self?.performVoiceLocalAction(request, completion: completion)
+        conversation.onListeningRequested = { [weak voice] in voice?.start() }
+        conversation.onListeningCancelled = { [weak voice] in voice?.cancel() }
+        conversation.onUserRequest = { [weak self] request in
+            self?.performConversationRequest(request)
         }
-        conversation.onStartCodexTask = { [weak self] prompt, project, completion in
-            self?.startVoiceCodexTask(
-                prompt: prompt,
-                projectName: project,
-                completion: completion
-            )
+        conversation.onHardInterruptRequested = { [weak self] threadID in
+            self?.interruptVoiceCodexTask(threadID)
         }
-        conversation.onContinueCodexTask = { [weak self] instruction, completion in
-            self?.continueVoiceCodexTask(instruction, completion: completion)
+        codex.onManagedTurnDelta = { [weak conversation] threadID, delta in
+            conversation?.receiveCodexDelta(threadID: threadID, delta: delta)
         }
         codex.onManagedTurnCompleted = { [weak conversation] threadID, message in
             conversation?.notifyCodexCompleted(threadID: threadID, result: message)
+        }
+        codex.onManagedTurnInterrupted = { [weak conversation] threadID in
+            conversation?.notifyCodexInterrupted(threadID: threadID)
+        }
+        codex.onManagedTurnFailed = { [weak conversation] threadID, message in
+            conversation?.notifyCodexFailed(threadID: threadID, message: message)
         }
         refreshSuggestions()
     }
@@ -444,113 +453,178 @@ final class CommandModeFeature: ObservableObject {
         }
     }
 
-    private func performVoiceLocalAction(
-        _ request: String,
-        completion: @escaping ConversationalVoiceFeature.ToolCompletion
-    ) {
+    private func performConversationRequest(_ request: String) {
         guard let resolution = resolve(request) else {
-            completion(["ok": false, "message": "I could not identify what to open."])
+            conversation.deliverLocalResponse(
+                "I could not understand that request.",
+                succeeded: false
+            )
             return
         }
-        if case .codex = resolution.route {
-            completion([
-                "ok": false,
-                "message": "That is a work request. Use start_codex_task instead.",
-            ])
-            return
-        }
-        execute(resolution, dismissOnSuccess: false) { succeeded, message in
-            completion(["ok": succeeded, "message": message])
-        }
-    }
 
-    private func startVoiceCodexTask(
-        prompt: String,
-        projectName: String?,
-        completion: @escaping ConversationalVoiceFeature.ToolCompletion
-    ) {
-        let projects = codex.availableProjects
-        let project: CodexProjectOption?
-        if let projectName {
-            let normalized = projectName.trimmingCharacters(in: .whitespacesAndNewlines)
-            project = projects.first {
-                $0.name.compare(normalized, options: [.caseInsensitive, .diacriticInsensitive]) == .orderedSame
-                    || $0.id.compare(normalized, options: .caseInsensitive) == .orderedSame
-                    || $0.path.localizedCaseInsensitiveContains(normalized)
-            }
+        if case let .codex(prompt, projectPath) = resolution.route {
+            continueOrStartVoiceCodexTask(prompt: prompt, projectPath: projectPath)
         } else {
-            project = nil
-        }
-
-        guard let project else {
-            completion([
-                "ok": false,
-                "needs_project": true,
-                "message": "Ask which project to use.",
-                "projects": projects.map(\.name),
-            ])
-            return
-        }
-
-        executionState = .working("Starting a Codex task…")
-        codex.createTask(
-            prompt: prompt,
-            projectPath: project.path,
-            role: .planner,
-            attachments: []
-        ) { [weak self] succeeded in
-            guard let self else { return }
-            guard succeeded, let threadID = self.codex.selectedThread?.id else {
-                let message = self.codex.lastIssue ?? "Codex could not start the task."
-                self.executionState = .failed(message)
-                completion(["ok": false, "message": message])
-                return
-            }
-            self.conversation.setActiveCodexThread(threadID)
-            self.executionState = .succeeded("Codex is working in \(project.name).")
-            completion([
-                "ok": true,
-                "message": "Codex started the task in \(project.name).",
-                "thread_id": threadID,
-            ])
+            performConversationLocalAction(resolution)
         }
     }
 
-    private func continueVoiceCodexTask(
-        _ instruction: String,
-        completion: @escaping ConversationalVoiceFeature.ToolCompletion
+    private func performConversationLocalAction(_ resolution: CommandResolution) {
+        let perform = { [weak self] in
+            guard let self else { return }
+            self.execute(resolution, dismissOnSuccess: false) { succeeded, message in
+                self.conversation.deliverLocalResponse(message, succeeded: succeeded)
+            }
+        }
+
+        guard
+            let threadID = conversation.activeCodexThreadID,
+            let thread = codex.threads.first(where: { $0.id == threadID })
+                ?? (codex.selectedThread?.id == threadID ? codex.selectedThread : nil),
+            thread.status.isRunning
+        else {
+            perform()
+            return
+        }
+
+        conversation.setActiveCodexThread(nil)
+        codex.interruptActiveTurn(threadID: threadID) { _ in perform() }
+    }
+
+    private func continueOrStartVoiceCodexTask(
+        prompt: String,
+        projectPath: String?
     ) {
+        let trimmedPrompt = prompt.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedPrompt.isEmpty else {
+            conversation.deliverLocalResponse("What would you like me to do?", succeeded: false)
+            return
+        }
+
         guard let threadID = conversation.activeCodexThreadID else {
-            completion([
-                "ok": false,
-                "message": "No Codex task has been started in this voice session.",
-            ])
+            startVoiceCodexThread(prompt: trimmedPrompt, projectPath: projectPath)
             return
         }
         guard let thread = codex.threads.first(where: { $0.id == threadID })
             ?? (codex.selectedThread?.id == threadID ? codex.selectedThread : nil)
         else {
-            completion(["ok": false, "message": "The Codex task could not be found."])
+            conversation.setActiveCodexThread(nil)
+            startVoiceCodexThread(prompt: trimmedPrompt, projectPath: projectPath)
             return
         }
 
-        let finish: (Bool) -> Void = { [weak self] succeeded in
-            guard let self else { return }
-            let message = succeeded
-                ? "Codex received the follow-up."
-                : (self.codex.lastIssue ?? "Codex could not receive the follow-up.")
-            completion(["ok": succeeded, "message": message])
+        if let projectPath, URL(fileURLWithPath: projectPath).standardizedFileURL.path
+            != URL(fileURLWithPath: thread.cwd).standardizedFileURL.path
+        {
+            conversation.setActiveCodexThread(nil)
+            let startNew = { [weak self] in
+                self?.startVoiceCodexThread(prompt: trimmedPrompt, projectPath: projectPath)
+            }
+            if thread.status.isRunning {
+                codex.interruptActiveTurn(threadID: threadID) { _ in startNew() }
+            } else {
+                startNew()
+            }
+            return
         }
+
         if thread.status.isRunning {
-            codex.steerActiveTurn(prompt: instruction, threadID: threadID, completion: finish)
+            codex.steerActiveTurn(prompt: trimmedPrompt, threadID: threadID) {
+                [weak self] succeeded in
+                guard let self, !succeeded else { return }
+                self.conversation.notifyCodexFailed(
+                    threadID: threadID,
+                    message: self.codex.lastIssue ?? "Codex could not accept the interruption."
+                )
+            }
         } else if thread.status == .waiting {
-            completion([
-                "ok": false,
-                "message": "Codex is waiting for an approval or answer in the command window.",
-            ])
+            conversation.deliverLocalResponse(
+                "Codex needs an approval or answer in this window before it can continue.",
+                succeeded: false
+            )
         } else {
-            codex.sendReply(prompt: instruction, attachments: [], to: thread, completion: finish)
+            codex.sendReply(prompt: trimmedPrompt, attachments: [], to: thread) {
+                [weak self] succeeded in
+                guard let self, !succeeded else { return }
+                self.conversation.notifyCodexFailed(
+                    threadID: threadID,
+                    message: self.codex.lastIssue ?? "Codex could not receive the follow-up."
+                )
+            }
         }
+    }
+
+    private func startVoiceCodexThread(prompt: String, projectPath: String?) {
+        let cwd: String
+        let codexPrompt: String
+        if let projectPath {
+            cwd = projectPath
+            codexPrompt = CodexVoicePrompt.initial(prompt)
+        } else {
+            do {
+                cwd = try voiceWorkspaceURL().path
+            } catch {
+                conversation.deliverLocalResponse(error.localizedDescription, succeeded: false)
+                return
+            }
+            codexPrompt = CodexVoicePrompt.initial(prompt)
+        }
+
+        executionState = .working("Starting a Codex conversation…")
+        codex.createTask(
+            prompt: codexPrompt,
+            projectPath: cwd,
+            role: .planner,
+            attachments: [],
+            displayPrompt: prompt
+        ) { [weak self] succeeded in
+            guard let self else { return }
+            guard succeeded, let threadID = self.codex.selectedThread?.id else {
+                let message = self.codex.lastIssue ?? "Codex could not start the conversation."
+                self.executionState = .failed(message)
+                self.conversation.deliverLocalResponse(message, succeeded: false)
+                return
+            }
+            self.conversation.setActiveCodexThread(threadID)
+            self.executionState = .succeeded("Codex is responding.")
+        }
+    }
+
+    private func interruptVoiceCodexTask(_ threadID: String) {
+        guard let thread = codex.threads.first(where: { $0.id == threadID })
+            ?? (codex.selectedThread?.id == threadID ? codex.selectedThread : nil)
+        else {
+            conversation.notifyCodexInterrupted(threadID: threadID)
+            return
+        }
+        guard thread.status.isRunning else {
+            conversation.notifyCodexInterrupted(threadID: threadID)
+            return
+        }
+        codex.interruptActiveTurn(threadID: threadID) { [weak self] succeeded in
+            guard let self, !succeeded else { return }
+            self.conversation.notifyCodexFailed(
+                threadID: threadID,
+                message: self.codex.lastIssue ?? "Codex could not stop the current response."
+            )
+        }
+    }
+
+    private func voiceWorkspaceURL() throws -> URL {
+        let root = try fileManager.url(
+            for: .applicationSupportDirectory,
+            in: .userDomainMask,
+            appropriateFor: nil,
+            create: true
+        )
+        let workspace = root
+            .appendingPathComponent("Silverdeck", isDirectory: true)
+            .appendingPathComponent("VoiceWorkspace", isDirectory: true)
+        try fileManager.createDirectory(
+            at: workspace,
+            withIntermediateDirectories: true
+        )
+        return workspace
     }
 
     private func dismissAfterSuccess() {

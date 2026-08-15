@@ -213,59 +213,42 @@ struct CommandModeView: View {
             .padding(.top, 13)
             .padding(.bottom, 8)
 
-            if conversation.state == .needsAPIKey {
-                VStack(alignment: .leading, spacing: 10) {
-                    Label("Connect OpenAI Realtime", systemImage: "key.fill")
-                        .font(.system(size: 15, weight: .semibold))
-                    Text("Add your OpenAI API key in Settings. It is stored in this Mac’s Keychain and is never shown in the command window.")
-                        .font(.system(size: 11))
-                        .foregroundStyle(.secondary)
-                    Button("Open Settings") {
-                        conversation.showSettings()
+            ScrollView {
+                LazyVStack(alignment: .leading, spacing: 9) {
+                    ForEach(conversation.transcript) { entry in
+                        transcriptRow(entry)
                     }
-                    .keyboardShortcut(.defaultAction)
+                    if !conversation.liveUserTranscript.isEmpty {
+                        transcriptRow(
+                            VoiceTranscriptEntry(
+                                speaker: .user,
+                                text: conversation.liveUserTranscript
+                            ),
+                            isLive: true
+                        )
+                    }
+                    if !conversation.liveAssistantTranscript.isEmpty {
+                        transcriptRow(
+                            VoiceTranscriptEntry(
+                                speaker: .assistant,
+                                text: conversation.liveAssistantTranscript
+                            ),
+                            isLive: true
+                        )
+                    }
+                    if conversation.transcript.isEmpty
+                        && conversation.liveUserTranscript.isEmpty
+                        && conversation.liveAssistantTranscript.isEmpty
+                    {
+                        Text("I’m listening. Ask naturally, interrupt me, or tell me to open something or start work in a project.")
+                            .font(.system(size: 12))
+                            .foregroundStyle(.secondary)
+                            .padding(.vertical, 8)
+                    }
                 }
-                .padding(16)
-                .background(.white.opacity(0.05), in: RoundedRectangle(cornerRadius: 12))
+                .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.horizontal, 18)
-            } else {
-                ScrollView {
-                    LazyVStack(alignment: .leading, spacing: 9) {
-                        ForEach(conversation.transcript) { entry in
-                            transcriptRow(entry)
-                        }
-                        if !conversation.liveUserTranscript.isEmpty {
-                            transcriptRow(
-                                VoiceTranscriptEntry(
-                                    speaker: .user,
-                                    text: conversation.liveUserTranscript
-                                ),
-                                isLive: true
-                            )
-                        }
-                        if !conversation.liveAssistantTranscript.isEmpty {
-                            transcriptRow(
-                                VoiceTranscriptEntry(
-                                    speaker: .assistant,
-                                    text: conversation.liveAssistantTranscript
-                                ),
-                                isLive: true
-                            )
-                        }
-                        if conversation.transcript.isEmpty
-                            && conversation.liveUserTranscript.isEmpty
-                            && conversation.liveAssistantTranscript.isEmpty
-                        {
-                            Text("I’m listening. Ask naturally, interrupt me, or tell me to open something or start work in a project.")
-                                .font(.system(size: 12))
-                                .foregroundStyle(.secondary)
-                                .padding(.vertical, 8)
-                        }
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.horizontal, 18)
-                    .padding(.bottom, 12)
-                }
+                .padding(.bottom, 12)
             }
 
             Spacer(minLength: 0)
@@ -419,7 +402,7 @@ struct CommandModeView: View {
         case .requestingMicrophone:
             status("Requesting microphone access…", symbol: "mic", color: .orange)
         case .connecting:
-            status("Connecting to OpenAI Realtime…", symbol: "network", color: .orange)
+            status("Connecting to Codex…", symbol: "network", color: .orange)
         case .listening:
             status("Listening — speak naturally or interrupt the response.", symbol: "waveform", color: .orange)
         case .thinking:
@@ -428,8 +411,6 @@ struct CommandModeView: View {
             status("Speaking — start talking to interrupt.", symbol: "speaker.wave.2.fill", color: .orange)
         case let .working(message):
             status(message, symbol: "gearshape.2.fill", color: .orange)
-        case .needsAPIKey:
-            status("An OpenAI API key is required for conversational voice.", symbol: "key.fill", color: .orange)
         case let .failed(message):
             status(message, symbol: "exclamationmark.triangle.fill", color: .orange)
         case .idle:

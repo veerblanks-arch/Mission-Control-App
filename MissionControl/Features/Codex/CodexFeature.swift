@@ -51,8 +51,12 @@ final class CodexFeature: ObservableObject {
     private var historyLoadToken: UUID?
     private var threadRefreshToken: UUID?
     private var activeTurnIDsByThreadID: [String: String] = [:]
+    private var requestedInterruptThreadIDs: Set<String> = []
     var onApprovalNeeded: (() -> Void)?
+    var onManagedTurnDelta: ((String, String) -> Void)?
     var onManagedTurnCompleted: ((String, String?) -> Void)?
+    var onManagedTurnInterrupted: ((String) -> Void)?
+    var onManagedTurnFailed: ((String, String) -> Void)?
 
     init(
         client: CodexAppServerClient = CodexAppServerClient(),
@@ -175,6 +179,7 @@ final class CodexFeature: ObservableObject {
         completionClearWorkItems.removeAll()
         recentlyCompletedThreadIDs.removeAll()
         activeTurnIDsByThreadID.removeAll()
+        requestedInterruptThreadIDs.removeAll()
         client.stop()
         connectionState = .stopped
         pendingApprovals = []
@@ -510,9 +515,13 @@ final class CodexFeature: ObservableObject {
         projectPath: String,
         role: CodexAgentRole,
         attachments: [CodexDraftAttachment],
+        displayPrompt: String? = nil,
         completion: @escaping (Bool) -> Void
     ) {
         let trimmedPrompt = prompt.trimmingCharacters(in: .whitespacesAndNewlines)
+        let presentedPrompt = displayPrompt?
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .fallback(trimmedPrompt) ?? trimmedPrompt
         guard !isSending, !isHandingOff, !isTakingBack else {
             completion(false)
             return
@@ -559,7 +568,7 @@ final class CodexFeature: ObservableObject {
                     CodexChatMessage(
                         id: localMessageID,
                         sender: .user,
-                        text: trimmedPrompt
+                        text: presentedPrompt
                     )
                 ]
                 self.startTurn(
@@ -698,6 +707,38 @@ final class CodexFeature: ObservableObject {
                 }
                 completion(true)
             case let .failure(error):
+                self.lastIssue = error.localizedDescription
+                completion(false)
+            }
+        }
+    }
+
+    func interruptActiveTurn(
+        threadID: String,
+        completion: @escaping (Bool) -> Void
+    ) {
+        guard managedThreadIDs.contains(threadID) else {
+            lastIssue = "That task is no longer managed here."
+            completion(false)
+            return
+        }
+        guard let turnID = activeTurnIDsByThreadID[threadID] else {
+            completion(true)
+            return
+        }
+
+        lastIssue = nil
+        requestedInterruptThreadIDs.insert(threadID)
+        client.request(
+            method: "turn/interrupt",
+            params: Self.safeTurnInterruptParams(threadID: threadID, turnID: turnID)
+        ) { [weak self] result in
+            guard let self else { return }
+            switch result {
+            case .success:
+                completion(true)
+            case let .failure(error):
+                self.requestedInterruptThreadIDs.remove(threadID)
                 self.lastIssue = error.localizedDescription
                 completion(false)
             }
@@ -1214,10 +1255,11 @@ final class CodexFeature: ObservableObject {
             guard let threadID = params["threadId"] as? String else { return }
             let turn = params["turn"] as? [String: Any]
             let status = turn?["status"] as? String
+            let wasRequestedInterrupt = requestedInterruptThreadIDs.remove(threadID) != nil
             activeTurnIDsByThreadID[threadID] = nil
             if
                 selectedThread?.id == threadID,
-                status == "failed" || status == "interrupted"
+                status == "failed" || (status == "interrupted" && !wasRequestedInterrupt)
             {
                 let fallback = status == "interrupted"
                     ? "The Codex turn was interrupted."
@@ -1240,6 +1282,15 @@ final class CodexFeature: ObservableObject {
                     : nil
                 onManagedTurnCompleted?(threadID, finalMessage)
             }
+            if managedThreadIDs.contains(threadID), status == "interrupted" {
+                onManagedTurnInterrupted?(threadID)
+            }
+            if managedThreadIDs.contains(threadID), status == "failed" {
+                onManagedTurnFailed?(
+                    threadID,
+                    Self.turnErrorMessage(from: turn) ?? "The Codex turn failed."
+                )
+            }
             refresh()
             if selectedThread?.id == threadID { refreshSelectedThreadHistory() }
         case "error":
@@ -1256,15 +1307,16 @@ final class CodexFeature: ObservableObject {
             guard
                 let threadID = params["threadId"] as? String,
                 managedThreadIDs.contains(threadID),
-                selectedThread?.id == threadID,
-                selectedThread?.status.isRunning == true,
                 let itemID = params["itemId"] as? String,
                 let delta = params["delta"] as? String
             else { return }
-            if let index = messages.firstIndex(where: { $0.id == itemID }) {
-                messages[index].text += delta
-            } else {
-                messages.append(CodexChatMessage(id: itemID, sender: .agent, text: delta))
+            onManagedTurnDelta?(threadID, delta)
+            if selectedThread?.id == threadID, selectedThread?.status.isRunning == true {
+                if let index = messages.firstIndex(where: { $0.id == itemID }) {
+                    messages[index].text += delta
+                } else {
+                    messages.append(CodexChatMessage(id: itemID, sender: .agent, text: delta))
+                }
             }
         default:
             break
@@ -1578,6 +1630,13 @@ final class CodexFeature: ObservableObject {
                 "writableRoots": [cwd],
                 "networkAccess": false,
             ],
+        ]
+    }
+
+    static func safeTurnInterruptParams(threadID: String, turnID: String) -> [String: Any] {
+        [
+            "threadId": threadID,
+            "turnId": turnID,
         ]
     }
 

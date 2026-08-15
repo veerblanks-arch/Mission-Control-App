@@ -436,67 +436,49 @@ final class DroppyTests: XCTestCase {
         )
     }
 
-    func testConversationalVoiceUsesCurrentRealtimeAudioConfiguration() throws {
-        let update = ConversationalVoiceSessionBuilder.sessionUpdate(
-            projectNames: ["Droppy", "Bitwise"]
-        )
-        XCTAssertEqual(update["type"] as? String, "session.update")
-
-        let session = try XCTUnwrap(update["session"] as? [String: Any])
-        XCTAssertEqual(session["type"] as? String, "realtime")
-        XCTAssertEqual(session["model"] as? String, "gpt-realtime-2.1")
-
-        let audio = try XCTUnwrap(session["audio"] as? [String: Any])
-        let input = try XCTUnwrap(audio["input"] as? [String: Any])
-        let format = try XCTUnwrap(input["format"] as? [String: Any])
-        let transcription = try XCTUnwrap(input["transcription"] as? [String: Any])
-        let turnDetection = try XCTUnwrap(input["turn_detection"] as? [String: Any])
-        XCTAssertEqual(format["rate"] as? Int, 24_000)
-        XCTAssertEqual(transcription["model"] as? String, "gpt-live-transcribe")
-        XCTAssertEqual(turnDetection["type"] as? String, "semantic_vad")
-        XCTAssertEqual(turnDetection["interrupt_response"] as? Bool, true)
-
-        let output = try XCTUnwrap(audio["output"] as? [String: Any])
-        XCTAssertEqual(output["voice"] as? String, "marin")
+    func testConversationalVoiceBuildsNaturalCodexPromptAndStopRequests() {
+        let prompt = CodexVoicePrompt.initial("Explain what this app does")
+        XCTAssertTrue(prompt.contains("Silverdeck's voice interface"))
+        XCTAssertTrue(prompt.contains("User: Explain what this app does"))
+        XCTAssertTrue(CodexVoicePrompt.isStopRequest("Never mind"))
+        XCTAssertTrue(CodexVoicePrompt.isStopRequest("stop that"))
+        XCTAssertFalse(CodexVoicePrompt.isStopRequest("stop the test after one failure"))
     }
 
-    func testConversationalVoiceExposesOnlyBoundedLocalAndCodexTools() throws {
-        let tools = ConversationalVoiceSessionBuilder.tools()
-        XCTAssertEqual(
-            tools.compactMap { $0["name"] as? String },
-            ["perform_local_action", "start_codex_task", "continue_codex_task"]
-        )
+    func testConversationalVoiceRejectsLikelyPlaybackEcho() {
+        let assistant = "Silverdeck can open your calendar and continue a Codex task."
         XCTAssertTrue(
-            ConversationalVoiceSessionBuilder.instructions(projectNames: ["Droppy"])
-                .contains("Available Codex projects: Droppy")
+            CodexVoicePrompt.isLikelyPlaybackEcho(
+                "open your calendar",
+                assistantText: assistant
+            )
+        )
+        XCTAssertFalse(
+            CodexVoicePrompt.isLikelyPlaybackEcho(
+                "wait, use Bitwise instead",
+                assistantText: assistant
+            )
         )
     }
 
-    func testConversationalVoiceParsesCompletedFunctionCalls() throws {
-        let calls = ConversationalVoiceSessionBuilder.functionCalls(from: [
-            "type": "response.done",
-            "response": [
-                "output": [[
-                    "type": "function_call",
-                    "name": "start_codex_task",
-                    "call_id": "call-1",
-                    "arguments": "{\"prompt\":\"Run the tests\",\"project\":\"Droppy\"}",
-                ]],
-            ],
-        ])
-
-        let call = try XCTUnwrap(calls.first)
-        XCTAssertEqual(call.name, "start_codex_task")
-        XCTAssertEqual(call.callID, "call-1")
-        XCTAssertEqual(call.arguments["prompt"] as? String, "Run the tests")
-        XCTAssertEqual(call.arguments["project"] as? String, "Droppy")
+    func testCodexSpeechOutputBuffersSentencesAndStripsMarkdown() {
+        let split = CodexSpeechOutput.readyChunks(
+            from: "This is a complete sentence that is ready to speak. A short tail",
+            flush: false
+        )
+        XCTAssertEqual(split.chunks, ["This is a complete sentence that is ready to speak."])
+        XCTAssertEqual(split.remainder, "A short tail")
+        XCTAssertEqual(
+            CodexSpeechOutput.spokenText(from: "Open **[Silverdeck](https://example.com)** now."),
+            "Open Silverdeck now."
+        )
     }
 
     func testConversationalVoiceStateTracksOnlyLiveSessionsAsActive() {
         XCTAssertTrue(ConversationalVoiceState.listening.isSessionActive)
         XCTAssertTrue(ConversationalVoiceState.speaking.isSessionActive)
         XCTAssertTrue(ConversationalVoiceState.working("Opening…").isSessionActive)
-        XCTAssertFalse(ConversationalVoiceState.needsAPIKey.isSessionActive)
+        XCTAssertTrue(ConversationalVoiceState.requestingMicrophone.isSessionActive)
         XCTAssertFalse(ConversationalVoiceState.failed("Offline").isSessionActive)
     }
 
@@ -679,6 +661,13 @@ final class DroppyTests: XCTestCase {
         XCTAssertEqual(sandbox?["type"] as? String, "workspaceWrite")
         XCTAssertEqual(sandbox?["writableRoots"] as? [String], ["/tmp/project"])
         XCTAssertEqual(sandbox?["networkAccess"] as? Bool, false)
+
+        let interrupt = CodexFeature.safeTurnInterruptParams(
+            threadID: "thread",
+            turnID: "turn"
+        )
+        XCTAssertEqual(interrupt["threadId"] as? String, "thread")
+        XCTAssertEqual(interrupt["turnId"] as? String, "turn")
     }
 
     func testCodexProtectedRequestsUseProtocolSpecificSafeRejections() {

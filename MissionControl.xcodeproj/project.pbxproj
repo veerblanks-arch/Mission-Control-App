@@ -51,7 +51,7 @@
 		100000000000000000000033 /* GlobalHotKeyController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000035 /* GlobalHotKeyController.swift */; };
 		100000000000000000000034 /* CommandVoiceInput.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000036 /* CommandVoiceInput.swift */; };
 		100000000000000000000035 /* ConversationalVoiceModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000037 /* ConversationalVoiceModels.swift */; };
-		100000000000000000000036 /* RealtimeVoiceClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000038 /* RealtimeVoiceClient.swift */; };
+		100000000000000000000036 /* CodexSpeechOutput.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000038 /* CodexSpeechOutput.swift */; };
 		100000000000000000000037 /* ConversationalVoiceFeature.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000039 /* ConversationalVoiceFeature.swift */; };
 		B10000000000000000000001 /* planner-owl.png in Resources */ = {isa = PBXBuildFile; fileRef = B20000000000000000000001 /* planner-owl.png */; };
 		B10000000000000000000002 /* builder-a-beaver.png in Resources */ = {isa = PBXBuildFile; fileRef = B20000000000000000000002 /* builder-a-beaver.png */; };
@@ -118,7 +118,7 @@
 		200000000000000000000035 /* GlobalHotKeyController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlobalHotKeyController.swift; sourceTree = "<group>"; };
 		200000000000000000000036 /* CommandVoiceInput.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CommandVoiceInput.swift; sourceTree = "<group>"; };
 		200000000000000000000037 /* ConversationalVoiceModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConversationalVoiceModels.swift; sourceTree = "<group>"; };
-		200000000000000000000038 /* RealtimeVoiceClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RealtimeVoiceClient.swift; sourceTree = "<group>"; };
+		200000000000000000000038 /* CodexSpeechOutput.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CodexSpeechOutput.swift; sourceTree = "<group>"; };
 		200000000000000000000039 /* ConversationalVoiceFeature.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConversationalVoiceFeature.swift; sourceTree = "<group>"; };
 		B20000000000000000000001 /* planner-owl.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "planner-owl.png"; sourceTree = "<group>"; };
 		B20000000000000000000002 /* builder-a-beaver.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "builder-a-beaver.png"; sourceTree = "<group>"; };
@@ -357,7 +357,7 @@
 				200000000000000000000033 /* CommandModeView.swift */,
 				200000000000000000000036 /* CommandVoiceInput.swift */,
 				200000000000000000000037 /* ConversationalVoiceModels.swift */,
-				200000000000000000000038 /* RealtimeVoiceClient.swift */,
+				200000000000000000000038 /* CodexSpeechOutput.swift */,
 				200000000000000000000039 /* ConversationalVoiceFeature.swift */,
 			);
 			path = CommandMode;
@@ -525,7 +525,7 @@
 				100000000000000000000033 /* GlobalHotKeyController.swift in Sources */,
 				100000000000000000000034 /* CommandVoiceInput.swift in Sources */,
 				100000000000000000000035 /* ConversationalVoiceModels.swift in Sources */,
-				100000000000000000000036 /* RealtimeVoiceClient.swift in Sources */,
+				100000000000000000000036 /* CodexSpeechOutput.swift in Sources */,
 				100000000000000000000037 /* ConversationalVoiceFeature.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

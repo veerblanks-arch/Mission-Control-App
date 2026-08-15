@@ -149,8 +149,9 @@ notifications, then dismisses according to the behavior of that feature.
 7. Codex.
 8. Command Mode: a global keyboard-first command surface, deterministic local
    app/file/folder/URL actions, Codex fallback for complex work, and guarded
-   approvals for sensitive actions. Realtime voice provides a conversational
-   layer over those bounded local and Codex tools.
+   approvals for sensitive actions. Local speech input and output provide a
+   conversational layer over the signed-in Codex App Server and bounded local
+   tools without a separate API key.
 9. Polish, accessibility, performance, launch at login, settings, motion
    design, and a cohesive app-wide color theme.
 
@@ -261,11 +262,11 @@ tasks without ending the voice session.
    existing Codex App Server client.
 6. Keep opening and navigation automatic, while destructive, write, shell, or
    external actions require an explicit approval surface.
-7. Start voice capture only after an explicit shortcut press. Use OpenAI
-   Realtime semantic turn detection for natural back-and-forth speech, streamed
-   audio, interruption, and vocabulary-guided transcription. Store the personal
-   API key in macOS Keychain. A second shortcut press or Escape ends the
-   session. Always-listening wake-word behavior is outside this phase.
+7. Start voice capture only after an explicit shortcut press. Use macOS Speech
+   Recognition with vocabulary guidance for input. Stream Codex App Server text deltas into macOS speech
+   synthesis, and support steering and interruption of the active turn. A
+   second shortcut press or Escape ends the session. Always-listening wake-word
+   behavior is outside this phase.
 8. Test the command resolver, project inference, safety boundaries, global
    invocation, packaged resources, and live target-Mac behavior.
 
@@ -277,12 +278,12 @@ tasks without ending the voice session.
 | Local actions | Open Silverdeck features, apps, folders, files, URLs, and Notion destinations | Complete |
 | Codex fallback | Start a managed Codex task for complex requests with compact project clarification | Complete |
 | Safety | One-time command, file-change, and permission approvals plus compact Codex questions | Complete |
-| Conversational voice | OpenAI Realtime audio, semantic turn detection, interruption, live transcript, and typed follow-ups | Implemented; live API acceptance pending |
-| Voice tools | Continue ordinary conversation, open bounded local targets, start a managed Codex task, steer its active turn, and report completion back into voice | Implemented; live acceptance pending |
-| Credentials | Personal API key stored only in macOS Keychain and never rendered back into the command surface | Complete |
+| Conversational voice | macOS transcription, streamed Codex speech, interruption, live transcript, and typed follow-ups | Basic live voice loop accepted; speaker echo tuning remains |
+| Voice tools | Continue ordinary conversation, open bounded local targets, start a managed Codex task, steer its active turn, and report completion back into voice | Basic live handoff accepted; interruption tuning remains |
+| Credentials | Reuse ChatGPT-managed Codex authentication; Silverdeck stores no API key | Complete |
 | Visual core | Preserve the supplied amber command-core asset for the later animation pass | Complete |
-| Verification | Automated tests, canonical app build, and packaged-resource checks | 104 tests pass; canonical `Builds/Droppy.app` packages successfully |
-| Target-Mac acceptance | Add the API key, verify microphone-to-Realtime audio, interruption, Droppy/Codex vocabulary, local opening, and managed Codex handoff | Pending user acceptance |
+| Verification | Automated tests, canonical app build, and packaged-resource checks | 104 tests pass; signed canonical `Builds/Droppy.app` packages successfully |
+| Target-Mac acceptance | Verify microphone input, echo reduction, spoken streaming, interruption, Droppy/Codex vocabulary, local opening, and managed Codex handoff | Basic microphone, spoken response, and typed execution accepted; speaker echo/interruption tuning pending |
 
 The original amber command-core reference supplied for this phase is preserved
 at `MissionControl/Resources/CommandMode/mission-control-core.png`. It remains

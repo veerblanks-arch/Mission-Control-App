@@ -210,7 +210,7 @@ Date: 2026-07-28
   is ambiguous. Do not require confirmation for opening existing targets;
   require explicit approval for destructive, write, shell, or external actions.
   The first Shift-Command-Space press opens Command Mode and starts a
-  conversational Realtime session; a second press or Escape ends it. Realtime
+  conversational session; a second press or Escape ends it. Local Apple Speech
   transcription receives explicit Droppy, Codex, Notion, project, and app
   vocabulary hints. Menu-bar openings stay silent so they never activate the
   microphone unexpectedly, while Codex approvals can reuse an already-open
@@ -218,9 +218,11 @@ Date: 2026-07-28
   Installed app matching may complete a short app target such as `Chrome`, but
   an app name inside a longer task sentence never captures that task. Explicit
   `Open Droppy` opens the app; `In Droppy, review…` targets the Droppy project.
-  Target-Mac feedback showed that Apple Speech required too much manual
-  correction for command use, which led to the Realtime conversational upgrade
-  documented below. The first live Codex handoff also exposed stale camel-case
+  Target-Mac feedback showed that the original one-shot Apple Speech command
+  flow required too much manual correction. The replacement keeps local speech
+  recognition but adds continuous conversation state, vocabulary hints, echo
+  reduction, spoken Codex streaming, and interruption. The first live Codex
+  handoff also exposed stale camel-case
   thread options. Every start,
   resume, and turn path now uses the installed schema's `on-request` approval
   policy; thread start and resume use `workspace-write`, while turn start keeps
@@ -229,14 +231,12 @@ Date: 2026-07-28
   Preserve the supplied amber command-core image as the static source for a
   later animation pass.
 
-- Phase 8 conversational voice upgrade: replace Apple Speech as the shortcut's
-  primary voice path with an OpenAI Realtime WebSocket session using
-  `gpt-realtime-2.1`, `gpt-live-transcribe`, semantic turn detection, streamed
-  PCM audio, and interruption. Keep the model's tools deliberately narrow:
-  immediate local navigation, starting a Silverdeck-managed Codex task,
-  and continuing only the Codex task started by that voice session. Codex
-  approvals and user questions remain visible in Command Mode. For this
-  personal local build, keep the API key in macOS Keychain; a distributable
-  build must replace direct standard-key authentication with a backend-issued
-  client credential. Live microphone/API acceptance remains a separate gate
-  from compilation and deterministic tests.
+- Phase 8 conversational voice pivot: do not use a separately billed OpenAI
+  Realtime API session. Use the existing ChatGPT-managed Codex App Server
+  session for reasoning and task execution, macOS Speech Recognition for input,
+  and macOS speech synthesis for streamed spoken output. Keep
+  local navigation deterministic and immediate. Voice follow-ups may steer the
+  active managed Codex turn; explicit stop requests interrupt it. Codex
+  approvals and user questions remain visible in Command Mode. No API key is
+  stored by Silverdeck. Live microphone, echo-reduction, and interruption
+  acceptance remain a separate gate from compilation and deterministic tests.

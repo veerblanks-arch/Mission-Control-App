@@ -11,9 +11,12 @@ enum CommandVoiceState: Equatable {
 
 @MainActor
 final class CommandVoiceInput: ObservableObject {
-    @Published private(set) var state: CommandVoiceState = .idle
+    @Published private(set) var state: CommandVoiceState = .idle {
+        didSet { onStateChange?(state) }
+    }
     @Published private(set) var transcript = ""
 
+    var onStateChange: ((CommandVoiceState) -> Void)?
     var onTranscript: ((String) -> Void)?
     var onSubmit: ((String) -> Void)?
 
@@ -87,10 +90,13 @@ final class CommandVoiceInput: ObservableObject {
         let request = SFSpeechAudioBufferRecognitionRequest()
         request.shouldReportPartialResults = true
         request.taskHint = .search
+        if #available(macOS 13.0, *) {
+            request.addsPunctuation = true
+        }
         request.contextualStrings = [
             "Droppy", "in Droppy", "Silverdeck", "Emberdeck", "Mission Control",
-            "Codex", "Notion",
-            "Notion Calendar", "Bitwise", "APUSH", "Xcode",
+            "Codex", "Ask Codex", "in Codex", "Notion", "Notion Calendar",
+            "Bitwise", "APUSH", "Xcode", "open Droppy", "review in Droppy",
         ]
         recognitionRequest = request
 

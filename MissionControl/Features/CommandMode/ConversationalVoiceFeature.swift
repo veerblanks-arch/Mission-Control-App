@@ -1,40 +1,38 @@
-import AVFoundation
 import Foundation
 
 @MainActor
 final class ConversationalVoiceFeature: ObservableObject {
-    typealias ToolCompletion = ([String: Any]) -> Void
-
     @Published private(set) var state: ConversationalVoiceState = .idle
     @Published private(set) var transcript: [VoiceTranscriptEntry] = []
     @Published private(set) var liveUserTranscript = ""
     @Published private(set) var liveAssistantTranscript = ""
     @Published private(set) var activeCodexThreadID: String?
 
-    var onLocalAction: ((String, @escaping ToolCompletion) -> Void)?
-    var onStartCodexTask: ((String, String?, @escaping ToolCompletion) -> Void)?
-    var onContinueCodexTask: ((String, @escaping ToolCompletion) -> Void)?
+    var onUserRequest: ((String) -> Void)?
+    var onListeningRequested: (() -> Void)?
+    var onListeningCancelled: (() -> Void)?
+    var onHardInterruptRequested: ((String) -> Void)?
     var onShowSettings: (() -> Void)?
 
-    private let client: RealtimeVoiceClient
-    private let keyStore: RealtimeAPIKeyStore
-    private var sessionGeneration = UUID()
+    private let speechOutput: CodexSpeechOutput
+    private var sessionActive = false
+    private var responseFinished = false
 
-    init(
-        client: RealtimeVoiceClient = RealtimeVoiceClient(),
-        keyStore: RealtimeAPIKeyStore = RealtimeAPIKeyStore()
-    ) {
-        self.client = client
-        self.keyStore = keyStore
-        client.onEvent = { [weak self] event in
-            Task { @MainActor in self?.handle(event) }
-        }
-        client.onDisconnect = { [weak self] message in
-            Task { @MainActor in self?.handleDisconnect(message) }
+    init() {
+        self.speechOutput = CodexSpeechOutput()
+        speechOutput.onSpeakingChanged = { [weak self] speaking in
+            self?.handleSpeakingChanged(speaking)
         }
     }
 
-    var isSessionActive: Bool { state.isSessionActive }
+    init(speechOutput: CodexSpeechOutput) {
+        self.speechOutput = speechOutput
+        speechOutput.onSpeakingChanged = { [weak self] speaking in
+            self?.handleSpeakingChanged(speaking)
+        }
+    }
+
+    var isSessionActive: Bool { sessionActive }
 
     func prepareForPresentation() {
         stop()
@@ -44,64 +42,104 @@ final class ConversationalVoiceFeature: ObservableObject {
         activeCodexThreadID = nil
     }
 
-    func start(projectNames: [String]) {
-        guard !state.isSessionActive else { return }
-        let apiKey: String
-        do {
-            guard let savedKey = try keyStore.load() else {
-                state = .needsAPIKey
-                return
-            }
-            apiKey = savedKey
-        } catch {
-            state = .failed(error.localizedDescription)
-            return
-        }
-
-        let generation = UUID()
-        sessionGeneration = generation
+    func start(projectNames _: [String]) {
+        guard !sessionActive else { return }
+        sessionActive = true
+        responseFinished = false
         state = .requestingMicrophone
-        requestMicrophoneAccess { [weak self] allowed in
-            guard let self, self.sessionGeneration == generation else { return }
-            guard allowed else {
-                self.state = .failed(
-                    "Microphone access is off. Enable it in System Settings > Privacy & Security > Microphone."
-                )
-                return
-            }
-            self.state = .connecting
-            self.client.connect(
-                apiKey: apiKey,
-                sessionUpdate: ConversationalVoiceSessionBuilder.sessionUpdate(
-                    projectNames: projectNames
-                )
-            )
-        }
+        onListeningRequested?()
     }
 
     func stop() {
-        sessionGeneration = UUID()
-        client.disconnect()
+        sessionActive = false
+        responseFinished = false
+        onListeningCancelled?()
+        speechOutput.stop()
         state = .idle
         liveUserTranscript = ""
         liveAssistantTranscript = ""
     }
 
     func toggle(projectNames: [String]) {
-        if state.isSessionActive {
+        if sessionActive {
             stop()
         } else {
             start(projectNames: projectNames)
         }
     }
 
+    func handleVoiceState(_ voiceState: CommandVoiceState) {
+        guard sessionActive else { return }
+        switch voiceState {
+        case .requestingPermission:
+            state = .requestingMicrophone
+        case .listening:
+            if state != .speaking { state = .listening }
+        case let .unavailable(message):
+            speechOutput.stop()
+            sessionActive = false
+            state = .failed(message)
+        case .idle:
+            break
+        }
+    }
+
+    func receivePartialTranscript(_ text: String) {
+        guard sessionActive else { return }
+        let normalized = CommandVoiceTranscriptNormalizer.normalize(text)
+        guard !normalized.isEmpty else { return }
+
+        if state == .speaking {
+            if CodexVoicePrompt.isLikelyPlaybackEcho(
+                normalized,
+                assistantText: liveAssistantTranscript
+            ) {
+                return
+            }
+            speechOutput.stop()
+            finalizeAssistantTranscript()
+            state = .listening
+        }
+        liveUserTranscript = normalized
+    }
+
+    func receiveFinalTranscript(_ text: String) {
+        guard sessionActive else { return }
+        let normalized = CommandVoiceTranscriptNormalizer.normalize(text)
+        guard !normalized.isEmpty else {
+            requestListening()
+            return
+        }
+        if state == .speaking,
+           CodexVoicePrompt.isLikelyPlaybackEcho(
+               normalized,
+               assistantText: liveAssistantTranscript
+           )
+        {
+            liveUserTranscript = ""
+            requestListening()
+            return
+        }
+        sendText(normalized)
+    }
+
     func sendText(_ text: String) {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return }
-        if state.isSessionActive {
-            appendTranscript(.user, text: trimmed)
-            state = .thinking
-            client.sendText(trimmed)
+        guard sessionActive, !trimmed.isEmpty else { return }
+
+        speechOutput.stop()
+        if !liveAssistantTranscript.isEmpty {
+            finalizeAssistantTranscript()
+        }
+        liveUserTranscript = ""
+        appendTranscript(.user, text: trimmed)
+        responseFinished = false
+        state = .thinking
+
+        if CodexVoicePrompt.isStopRequest(trimmed), let threadID = activeCodexThreadID {
+            onHardInterruptRequested?(threadID)
+        } else {
+            onUserRequest?(trimmed)
         }
     }
 
@@ -109,156 +147,110 @@ final class ConversationalVoiceFeature: ObservableObject {
         activeCodexThreadID = threadID
     }
 
-    func notifyCodexCompleted(threadID: String, result: String?) {
+    func receiveCodexDelta(threadID: String, delta: String) {
         guard
+            sessionActive,
             threadID == activeCodexThreadID,
-            state.isSessionActive
+            !delta.isEmpty
         else { return }
-        let summary = String(
-            (result?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false
-                ? result!
-                : "The Codex task finished without a text summary.")
-                .prefix(4_000)
-        )
-        appendTranscript(.system, text: "Codex finished: \(summary)")
-        state = .thinking
-        client.injectSystemUpdate(
-            summary,
-            responseInstructions: "Tell the user that Codex finished. Summarize the result in one or two useful sentences, then ask whether they want a follow-up."
-        )
+        liveAssistantTranscript += delta
+        speechOutput.append(delta)
+        if state != .speaking { state = .thinking }
+    }
+
+    func notifyCodexCompleted(threadID: String, result: String?) {
+        guard sessionActive, threadID == activeCodexThreadID else { return }
+        if liveAssistantTranscript.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+           let result,
+           !result.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        {
+            liveAssistantTranscript = result
+            speechOutput.append(result)
+        }
+        responseFinished = true
+        speechOutput.finish()
+        if !speechOutput.isSpeaking {
+            finishResponseAndListen()
+        }
+    }
+
+    func notifyCodexInterrupted(threadID: String) {
+        guard sessionActive, threadID == activeCodexThreadID else { return }
+        speechOutput.stop()
+        finalizeAssistantTranscript()
+        responseFinished = false
+        appendTranscript(.system, text: "Codex stopped the current response.")
+        requestListening()
+    }
+
+    func notifyCodexFailed(threadID: String, message: String) {
+        guard sessionActive, threadID == activeCodexThreadID else { return }
+        speechOutput.stop()
+        finalizeAssistantTranscript()
+        responseFinished = false
+        state = .failed(message)
+    }
+
+    func deliverLocalResponse(_ message: String, succeeded: Bool) {
+        guard sessionActive else { return }
+        let fallback = succeeded ? "Done." : "I couldn't complete that."
+        let response = message.trimmingCharacters(in: .whitespacesAndNewlines)
+        liveAssistantTranscript = response.isEmpty ? fallback : response
+        responseFinished = true
+        speechOutput.append(liveAssistantTranscript)
+        speechOutput.finish()
+        if !speechOutput.isSpeaking {
+            finishResponseAndListen()
+        }
+    }
+
+    func interruptAndListen() {
+        guard sessionActive else { return }
+        speechOutput.stop()
+        finalizeAssistantTranscript()
+        responseFinished = false
+        if let threadID = activeCodexThreadID {
+            onHardInterruptRequested?(threadID)
+        } else {
+            requestListening()
+        }
     }
 
     func showSettings() {
         onShowSettings?()
     }
 
-    private func requestMicrophoneAccess(completion: @escaping (Bool) -> Void) {
-        switch AVCaptureDevice.authorizationStatus(for: .audio) {
-        case .authorized:
-            completion(true)
-        case .notDetermined:
-            AVCaptureDevice.requestAccess(for: .audio) { allowed in
-                DispatchQueue.main.async { completion(allowed) }
-            }
-        case .denied, .restricted:
-            completion(false)
-        @unknown default:
-            completion(false)
-        }
-    }
-
-    private func handle(_ event: [String: Any]) {
-        let type = event["type"] as? String ?? ""
-        switch type {
-        case "session.updated":
-            state = .listening
-
-        case "input_audio_buffer.speech_started":
-            liveUserTranscript = ""
-            liveAssistantTranscript = ""
-            state = .listening
-
-        case "input_audio_buffer.speech_stopped":
-            state = .thinking
-
-        case "conversation.item.input_audio_transcription.delta":
-            if let delta = event["delta"] as? String {
-                liveUserTranscript += delta
-            }
-
-        case "conversation.item.input_audio_transcription.completed":
-            let text = (event["transcript"] as? String) ?? liveUserTranscript
-            appendTranscript(.user, text: text)
-            liveUserTranscript = ""
-
-        case "response.output_audio_transcript.delta":
-            if let delta = event["delta"] as? String {
-                liveAssistantTranscript += delta
-            }
-
-        case "response.output_audio_transcript.done":
-            let text = (event["transcript"] as? String) ?? liveAssistantTranscript
-            appendTranscript(.assistant, text: text)
-            liveAssistantTranscript = ""
-
-        case "response.output_audio.delta":
+    private func handleSpeakingChanged(_ speaking: Bool) {
+        guard sessionActive else { return }
+        if speaking {
             state = .speaking
-
-        case "response.created":
+            // Keep transcription active during playback so a new utterance can
+            // stop local speech and steer the in-flight Codex turn.
+            onListeningRequested?()
+        } else if responseFinished {
+            finishResponseAndListen()
+        } else if state == .speaking {
             state = .thinking
-
-        case "response.done":
-            let calls = ConversationalVoiceSessionBuilder.functionCalls(from: event)
-            if calls.isEmpty {
-                state = .listening
-            } else {
-                runToolCalls(calls, index: 0)
-            }
-
-        default:
-            break
         }
     }
 
-    private func runToolCalls(_ calls: [RealtimeFunctionCall], index: Int) {
-        guard index < calls.count else {
-            state = .thinking
-            client.requestResponse()
-            return
-        }
-        let call = calls[index]
-        state = .working(toolStatus(for: call.name))
-        execute(call) { [weak self] output in
-            guard let self else { return }
-            self.client.sendFunctionOutput(
-                callID: call.callID,
-                output: ConversationalVoiceSessionBuilder.functionOutput(output)
-            )
-            self.runToolCalls(calls, index: index + 1)
-        }
+    private func finishResponseAndListen() {
+        finalizeAssistantTranscript()
+        responseFinished = false
+        requestListening()
     }
 
-    private func execute(_ call: RealtimeFunctionCall, completion: @escaping ToolCompletion) {
-        switch call.name {
-        case "perform_local_action":
-            guard let request = call.arguments["request"] as? String else {
-                completion(Self.invalidToolArguments())
-                return
-            }
-            guard let onLocalAction else {
-                completion(Self.unavailableTool())
-                return
-            }
-            onLocalAction(request, completion)
+    private func requestListening() {
+        guard sessionActive else { return }
+        liveUserTranscript = ""
+        state = .listening
+        onListeningRequested?()
+    }
 
-        case "start_codex_task":
-            guard let prompt = call.arguments["prompt"] as? String else {
-                completion(Self.invalidToolArguments())
-                return
-            }
-            guard let onStartCodexTask else {
-                completion(Self.unavailableTool())
-                return
-            }
-            onStartCodexTask(prompt, call.arguments["project"] as? String, completion)
-
-        case "continue_codex_task":
-            guard let instruction = call.arguments["instruction"] as? String else {
-                completion(Self.invalidToolArguments())
-                return
-            }
-            guard let onContinueCodexTask else {
-                completion(Self.unavailableTool())
-                return
-            }
-            onContinueCodexTask(instruction, completion)
-
-        default:
-            completion([
-                "ok": false,
-                "message": "That voice tool is not available.",
-            ])
-        }
+    private func finalizeAssistantTranscript() {
+        let text = liveAssistantTranscript.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !text.isEmpty { appendTranscript(.assistant, text: text) }
+        liveAssistantTranscript = ""
     }
 
     private func appendTranscript(_ speaker: VoiceTranscriptSpeaker, text: String) {
@@ -268,28 +260,5 @@ final class ConversationalVoiceFeature: ObservableObject {
         if transcript.count > 40 {
             transcript.removeFirst(transcript.count - 40)
         }
-    }
-
-    private func handleDisconnect(_ message: String) {
-        guard state != .idle else { return }
-        client.disconnect()
-        state = .failed(message)
-    }
-
-    private func toolStatus(for name: String) -> String {
-        switch name {
-        case "perform_local_action": return "Opening it…"
-        case "start_codex_task": return "Handing that to Codex…"
-        case "continue_codex_task": return "Updating the Codex task…"
-        default: return "Working…"
-        }
-    }
-
-    private static func invalidToolArguments() -> [String: Any] {
-        ["ok": false, "message": "The request was missing required details."]
-    }
-
-    private static func unavailableTool() -> [String: Any] {
-        ["ok": false, "message": "That tool is unavailable right now."]
     }
 }

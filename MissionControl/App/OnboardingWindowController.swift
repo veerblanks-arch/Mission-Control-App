@@ -7,13 +7,12 @@ final class SettingsWindowController: NSWindowController {
         self.permissionsManager = permissionsManager
 
         let viewController = OnboardingViewController(
-            permissionsManager: permissionsManager,
-            keyStore: RealtimeAPIKeyStore()
+            permissionsManager: permissionsManager
         )
         let window = NSWindow(contentViewController: viewController)
         window.title = "Silverdeck Settings"
         window.styleMask = [.titled, .closable, .miniaturizable]
-        window.setContentSize(NSSize(width: 520, height: 430))
+        window.setContentSize(NSSize(width: 520, height: 345))
         window.isReleasedWhenClosed = false
         window.center()
 
@@ -28,16 +27,9 @@ final class SettingsWindowController: NSWindowController {
 
 private final class OnboardingViewController: NSViewController {
     private let permissionsManager: PermissionsManager
-    private let keyStore: RealtimeAPIKeyStore
-    private let apiKeyField = NSSecureTextField()
-    private let apiKeyStatus = NSTextField(wrappingLabelWithString: "")
 
-    init(
-        permissionsManager: PermissionsManager,
-        keyStore: RealtimeAPIKeyStore
-    ) {
+    init(permissionsManager: PermissionsManager) {
         self.permissionsManager = permissionsManager
-        self.keyStore = keyStore
         super.init(nibName: nil, bundle: nil)
     }
 
@@ -47,7 +39,7 @@ private final class OnboardingViewController: NSViewController {
     }
 
     override func loadView() {
-        view = NSView(frame: NSRect(x: 0, y: 0, width: 520, height: 430))
+        view = NSView(frame: NSRect(x: 0, y: 0, width: 520, height: 345))
 
         let title = NSTextField(labelWithString: "Silverdeck")
         title.font = .systemFont(ofSize: 22, weight: .semibold)
@@ -70,43 +62,22 @@ private final class OnboardingViewController: NSViewController {
         voiceTitle.font = .systemFont(ofSize: 15, weight: .semibold)
 
         let voiceBody = NSTextField(
-            wrappingLabelWithString: "Add an OpenAI API key to use low-latency Realtime voice. The key stays in this Mac’s Keychain; API usage is billed to that OpenAI account."
+            wrappingLabelWithString: "Voice conversations use the Codex account already signed in on this Mac. Silverdeck uses macOS Speech Recognition for microphone input, streams the Codex response, and reads it aloud with the macOS system voice. No OpenAI API key is required."
         )
         voiceBody.font = .systemFont(ofSize: 12)
         voiceBody.textColor = .secondaryLabelColor
 
-        apiKeyField.placeholderString = "OpenAI API key"
-        apiKeyField.font = .monospacedSystemFont(ofSize: 12, weight: .regular)
+        let voiceStatus = NSTextField(labelWithString: "Ready with Codex · Uses normal Codex plan limits")
+        voiceStatus.font = .systemFont(ofSize: 11, weight: .medium)
+        voiceStatus.textColor = .systemGreen
 
-        let saveKeyButton = NSButton(
-            title: "Save API Key",
-            target: self,
-            action: #selector(saveAPIKey)
-        )
-        saveKeyButton.bezelStyle = .rounded
-
-        let removeKeyButton = NSButton(
-            title: "Remove Key",
-            target: self,
-            action: #selector(removeAPIKey)
-        )
-        removeKeyButton.bezelStyle = .rounded
-
-        apiKeyStatus.font = .systemFont(ofSize: 11)
-        apiKeyStatus.textColor = .secondaryLabelColor
-
-        let keyButtonRow = NSStackView(views: [saveKeyButton, removeKeyButton])
-        keyButtonRow.orientation = .horizontal
-        keyButtonRow.spacing = 10
-        keyButtonRow.alignment = .centerY
-
-        let previewButton = NSButton(
+        let doneButton = NSButton(
             title: "Done",
             target: self,
             action: #selector(closeWindow)
         )
-        previewButton.bezelStyle = .rounded
-        previewButton.keyEquivalent = "\r"
+        doneButton.bezelStyle = .rounded
+        doneButton.keyEquivalent = "\r"
 
         let stack = NSStackView(views: [
             title,
@@ -115,10 +86,8 @@ private final class OnboardingViewController: NSViewController {
             separator,
             voiceTitle,
             voiceBody,
-            apiKeyField,
-            keyButtonRow,
-            apiKeyStatus,
-            previewButton,
+            voiceStatus,
+            doneButton,
         ])
         stack.orientation = .vertical
         stack.spacing = 11
@@ -134,9 +103,7 @@ private final class OnboardingViewController: NSViewController {
             body.widthAnchor.constraint(equalTo: stack.widthAnchor),
             separator.widthAnchor.constraint(equalTo: stack.widthAnchor),
             voiceBody.widthAnchor.constraint(equalTo: stack.widthAnchor),
-            apiKeyField.widthAnchor.constraint(equalTo: stack.widthAnchor)
         ])
-        refreshAPIKeyStatus()
     }
 
     @objc private func openPrivacySettings() {
@@ -145,41 +112,5 @@ private final class OnboardingViewController: NSViewController {
 
     @objc private func closeWindow() {
         view.window?.close()
-    }
-
-    @objc private func saveAPIKey() {
-        do {
-            try keyStore.save(apiKeyField.stringValue)
-            apiKeyField.stringValue = ""
-            apiKeyStatus.textColor = .systemGreen
-            apiKeyStatus.stringValue = "API key saved securely in Keychain."
-        } catch {
-            apiKeyStatus.textColor = .systemOrange
-            apiKeyStatus.stringValue = error.localizedDescription
-        }
-    }
-
-    @objc private func removeAPIKey() {
-        do {
-            try keyStore.delete()
-            apiKeyField.stringValue = ""
-            apiKeyStatus.textColor = .secondaryLabelColor
-            apiKeyStatus.stringValue = "No API key is saved."
-        } catch {
-            apiKeyStatus.textColor = .systemOrange
-            apiKeyStatus.stringValue = error.localizedDescription
-        }
-    }
-
-    private func refreshAPIKeyStatus() {
-        do {
-            apiKeyStatus.stringValue = try keyStore.load() == nil
-                ? "No API key is saved."
-                : "An API key is saved in Keychain."
-            apiKeyStatus.textColor = .secondaryLabelColor
-        } catch {
-            apiKeyStatus.stringValue = error.localizedDescription
-            apiKeyStatus.textColor = .systemOrange
-        }
     }
 }
